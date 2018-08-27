@@ -1,0 +1,81 @@
+#!/usr/bin/env spcli
+
+# Hidayat Trimarsanto <anto@eijkman.go.id>
+#
+# create an FST file with the following format:
+# AVG_FST MAX_FST POP1 POP2 ...
+
+
+from seqpy import cout, cerr
+from seqpy.cmds import arg_parser
+from seqpy.core.bioio import tabparser
+
+import allel
+import numpy as np
+
+def init_argparser(p=None):
+
+    p = tabparser.init_argparser()
+    p.add_argument('-o', '--outfile', default='outfile.fst.txt')
+    p.add_argument('infile')
+
+    return p
+
+
+def main( args ):
+
+    geno2fst( args )
+
+
+def geno2fst( args ):
+
+    lineparser = tabparser.GenotypeLineParser( args )
+    lineparser.set_translator(lineparser.diploid_translator)
+    lineparser.parse_grouping()
+
+    cout('Grouping:')
+    groups = lineparser.groups
+    for k in lineparser.groups:
+        cout(' %12s %3d' % (k, len(lineparser.groups[k])))
+
+    FST = [] # FST indexed by group_keys
+    group_keys = sorted(lineparser.groups.keys())
+    cout(group_keys)
+
+    # output to file
+    cout('Writing outfile...')
+    outfile = open(args.outfile, 'w')
+
+    outfile.write('CHROM\tPOS\tMAX\tMEAN\tMEDIAN\tMAF\t%s\n' % '\t'.join(group_keys) )
+
+    idx = 0
+    for (posinfo, genolist) in lineparser.parse():
+
+        idx += 1
+        genoarray = allel.GenotypeArray( [genolist]  )
+
+        # calculate MAF
+        ac = genoarray.count_alleles()
+        maf = np.min(ac)/np.sum(ac)
+        if maf > 0.5:
+            print(ac)
+
+        # calculate FST per group against other samples
+
+        fst_sites = []
+        for g in group_keys:
+            ac_g = genoarray.count_alleles(subpop = groups[g])
+            ac_ng = genoarray.count_alleles(subpop = list( lineparser.sample_idx - set(groups[g])))
+            num, den = allel.stats.hudson_fst(ac_g, ac_ng)
+            fst = num[0]/den[0]
+            if not (0.0 <= fst <= 1.0):
+                fst = 0
+            fst_sites.append( fst )
+
+        if idx % 100 == 0:
+            cerr('I: writing position no %d' % idx)
+
+        outfile.write('%s\t%s\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%s\n' % 
+                        (posinfo[0], posinfo[1], np.max(fst_sites), np.mean(fst_sites), np.median(fst_sites), maf,
+                            '\t'.join( '%5.4f' % x for x in fst_sites)))
+
