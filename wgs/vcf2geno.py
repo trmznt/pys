@@ -34,8 +34,9 @@ def vcf2geno( args ):
     # read the mighty VCF file
     cerr('[I: reading VCF...]')
     vcfset = allel.read_vcf(args.infile,
-            fields=['samples', 'variants/CHROM', 'variants/POS', 
-                'calldata/AD'])
+            fields=['samples', 'variants/CHROM', 'variants/POS', 'variants/REF',
+                'variants/ALT', 'variants/SNPEFF_GENE_NAME',
+                'variants/SNPEFF_AMINO_ACID_CHANGE', 'calldata/AD'])
 
     sample_file = args.outfile + '.indv.txt'
     pos_file = args.outfile + '.pos.txt'
@@ -50,16 +51,18 @@ def vcf2geno( args ):
             outfile.write('\n')
 
     # write position
+    # position file is:
+    # CHROM POS REF ALT
     cerr('[I: writing position file]')
     with open(pos_file, 'w') as outfile:
-        outfile.write('CHROM\tPOS\n')
-        for (chrom, pos) in zip(
-                vcfset['variants/CHROM'], vcfset['variants/POS']):
-            print(chrom, pos)
-            outfile.write(chrom)
-            outfile.write('\t')
-            outfile.write(str(pos))
-            outfile.write('\n')
+        outfile.write('CHROM\tPOS\tREF\tALT\tGENE\tAACHANGE\n')
+        for (chrom, pos, ref, alt, gene, aachange) in zip(
+                vcfset['variants/CHROM'], vcfset['variants/POS'],
+                vcfset['variants/REF'], vcfset['variants/ALT'],
+                vcfset['variants/SNPEFF_GENE_NAME'],
+                vcfset['variants/SNPEFF_AMINO_ACID_CHANGE']):
+            outfile.write('%s\t%d\t%s\t%s\t%s\t%s\n' %
+                (chrom, pos, ref, alt[0], gene, aachange))
 
     # write genotype by converting the genotype
     cerr('[I: writing genotype file]')
