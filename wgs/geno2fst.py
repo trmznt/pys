@@ -56,9 +56,12 @@ def geno2fst( args ):
 
         # calculate MAF
         ac = genoarray.count_alleles()
-        maf = np.min(ac)/np.sum(ac)
-        if maf > 0.5:
-            print(ac)
+        num = np.min(ac)
+        denom = np.sum(ac)
+        if num == denom:
+            maf = 0
+        else:
+            maf = np.min(ac)/np.sum(ac)
 
         # calculate FST per group against other samples
 
