@@ -18,6 +18,7 @@ def init_argparser():
     p = arg_parser("Create multiple manhattan plot from columnar data")
     p.add_argument('--column', default=None)
     p.add_argument('--dpi', type=int, default=600)
+    p.add_argument('--dotsize', type=float, default=0.25)
     p.add_argument('-o', '--outfile', default="outplot.png")
 
     p.add_argument('infile')
@@ -42,7 +43,7 @@ def mhtplot( args ):
         columns = [ df.columns[int(i)] for i in args.column.split(',') ]
     else:
         columns = df.columns[2:]
-    
+
     no_of_figures = len(columns)
 
     regions = df[df.columns[0]]
@@ -51,7 +52,7 @@ def mhtplot( args ):
     colours = cycle(colour_list[:3])
     for idx, region in enumerate(regions[1:]):
         if region != region_name:
-            region_boundaries.append( (start_idx, idx-1, region_name, next(colours)) ) 
+            region_boundaries.append( (start_idx, idx-1, region_name, next(colours)) )
             start_idx, region_name = idx, region
     region_boundaries.append( (start_idx, idx-1, region_name, next(colours)) )
 
@@ -63,15 +64,15 @@ def mhtplot( args ):
         cerr('I: plotting %s' % c)
         points = df[c]
         ax = fig.add_subplot(no_of_figures, 1, idx+1)
-        make_plot(ax, points, region_boundaries, c)
+        make_plot(ax, points, region_boundaries, c, args.dotsize)
 
     fig.tight_layout()
     fig.savefig(args.outfile)
 
 
-def make_plot(axis, points, boundaries, label):
+def make_plot(axis, points, boundaries, label, dotsize=0.25):
     for (start_idx, end_idx, region_name, region_colour) in boundaries:
-        axis.scatter( np.arange(start_idx, end_idx), points[start_idx:end_idx], 0.25, c=region_colour)
+        axis.scatter( np.arange(start_idx, end_idx), points[start_idx:end_idx], dotsize, c=region_colour)
         axis.set_ylim(0, 1.1)
         axis.set_xlim(-10, len(points) + 10)
         axis.get_xaxis().set_visible(False)
