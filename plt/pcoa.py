@@ -51,12 +51,12 @@ def pcoa( args ):
     fig = plt.figure( figsize = (9, 9), dpi = args.dpi )
 
     fig_idx = 1
-    for pcx, pcy in combinations([1,2,3], 2):
+    for pcx, pcy in combinations([0,1,2], 2):
 
         ax = fig.add_subplot(3, 1, fig_idx)
         fig_idx += 1
 
-        make_plot(ax, pcoa[0][pcx], pcoa[0][pcy])
+        make_plot(ax, pcoa[0][:,pcx], pcoa[0][:,pcy])
 
     fig.tight_layout()
     fig.savefig(args.outfile)
