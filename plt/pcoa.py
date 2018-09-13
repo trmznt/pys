@@ -19,6 +19,7 @@ def init_argparser():
     p = arg_parser("Create PCoA plot based on distance matrix file")
     p = grpparser.init_argparser(p)
     p.add_argument('--dpi', type=int, default=600)
+    p.add_argument('--dotsize', type=float, default=0.25)
     p.add_argument('-o', '--outfile', default="outplot.pcoa.png")
 
     p.add_argument('infile')
@@ -57,68 +58,12 @@ def pcoa( args ):
         ax = fig.add_subplot(3, 1, fig_idx)
         fig_idx += 1
 
-        make_plot(ax, pcoa[0][:,pcx], pcoa[0][:,pcy], colour_list)
-
-    fig.tight_layout()
-    fig.savefig(args.outfile)
-
-    return
-
-    import IPython
-    IPython.embed()
-
-
-
-    regions = df[df.columns[0]]
-    region_boundaries = []
-    start_idx, region_name = 0, regions[0]
-    colours = cycle(colour_list[:3])
-    for idx, region in enumerate(regions[1:]):
-        if region != region_name:
-            region_boundaries.append( (start_idx, idx-1, region_name, next(colours)) )
-            start_idx, region_name = idx, region
-    region_boundaries.append( (start_idx, idx-1, region_name, next(colours)) )
-
-    print(region_boundaries)
-
-    fig = plt.figure( figsize=(21, no_of_figures), dpi = args.dpi )
-
-    for idx, c in enumerate(columns):
-        cerr('I: plotting %s' % c)
-        points = df[c]
-        ax = fig.add_subplot(no_of_figures, 1, idx+1)
-        make_plot(ax, points, region_boundaries, c)
+        make_plot(ax, pcoa[0][:,pcx], pcoa[0][:,pcy], colour_list, args.dotsize)
 
     fig.tight_layout()
     fig.savefig(args.outfile)
 
 
-def make_plot(axis, x, y, colours):
-    axis.scatter( x, y, 0.2, c=colours )
-
-def xxx_make_plot(axis, points, boundaries, label):
-    for (start_idx, end_idx, region_name, region_colour) in boundaries:
-        axis.scatter( np.arange(start_idx, end_idx), points[start_idx:end_idx], 0.25, c=region_colour)
-        axis.set_ylim(0, 1.1)
-        axis.set_xlim(-10, len(points) + 10)
-        axis.get_xaxis().set_visible(False)
-        axis.set_ylabel( label, fontsize=6 )
-
-
-
-
-
-
-def haha():
-
-
-
-
-    heights = df[df.columns[args.column - 1]]
-
-    cerr('I: plotting...')
-    #plt.bar( np.arange(0, len(heights)), heights, 1.0)
-    #plt.plot( heights )
-    plt.scatter( np.arange(0, len(heights)), heights, 0.05 )
-    plt.savefig(args.outfile, dpi = args.dpi)
+def make_plot(axis, x, y, colours, dotsize):
+    axis.scatter( x, y, dotsize, c=colours )
 
