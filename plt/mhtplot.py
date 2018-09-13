@@ -50,11 +50,11 @@ def mhtplot( args ):
     region_boundaries = []
     start_idx, region_name = 0, regions[0]
     colours = cycle(colour_list[:3])
-    for idx, region in enumerate(regions[1:]):
+    for idx, region in enumerate(regions):
         if region != region_name:
             region_boundaries.append( (start_idx, idx-1, region_name, next(colours)) )
             start_idx, region_name = idx, region
-    region_boundaries.append( (start_idx, idx-1, region_name, next(colours)) )
+    region_boundaries.append( (start_idx, idx, region_name, next(colours)) )
 
     print(region_boundaries)
 
@@ -72,27 +72,9 @@ def mhtplot( args ):
 
 def make_plot(axis, points, boundaries, label, dotsize=0.25):
     for (start_idx, end_idx, region_name, region_colour) in boundaries:
+        end_idx += 1
         axis.scatter( np.arange(start_idx, end_idx), points[start_idx:end_idx], dotsize, c=region_colour)
         axis.set_ylim(0, 1.1)
         axis.set_xlim(-10, len(points) + 10)
         axis.get_xaxis().set_visible(False)
         axis.set_ylabel( label, fontsize=6 )
-
-
-
-
-
-
-def haha():
-
-
-
-
-    heights = df[df.columns[args.column - 1]]
-
-    cerr('I: plotting...')
-    #plt.bar( np.arange(0, len(heights)), heights, 1.0)
-    #plt.plot( heights )
-    plt.scatter( np.arange(0, len(heights)), heights, 0.05 )
-    plt.savefig(args.outfile, dpi = args.dpi)
-
