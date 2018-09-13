@@ -44,7 +44,7 @@ def geno2dxy( args ):
 
     # read whole genotype, and release all unused memory
     cerr('I: reading genotype file')
-    haplotypes = lineparser.parse_haplotypes()
+    haplotypes = lineparser.parse_np_haplotypes()
 
     cerr('I: calculating pairwise dxy')
     distm = pairwise_dxy( haplotypes )
