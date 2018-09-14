@@ -17,34 +17,24 @@ from itertools import combinations
 def init_argparser(p=None):
 
     p = tabparser.init_argparser()
-    p.add_argument('-o', '--outfile', default='outfile.dxy.txt')
-    p.add_argument('infile')
+    p.add_argument('-o', '--outfile', default='outfile.dist.txt')
 
     return p
 
 
 def main( args ):
 
-    geno2dxy( args )
+    geno2dist( args )
 
 
-def geno2dxy( args ):
+def geno2dist( args ):
 
     lineparser = tabparser.GenotypeLineParser( args )
     lineparser.set_translator(lineparser.haploid_translator)
-    lineparser.parse_grouping()
-
-    cout('Grouping:')
-    groups = lineparser.groups
-    for k in lineparser.groups:
-        cout(' %12s %3d' % (k, len(lineparser.groups[k])))
-
-    group_keys = sorted(lineparser.groups.keys())
-    cout(group_keys)
 
     # read whole genotype, and release all unused memory
     cerr('I: reading genotype file')
-    haplotypes = lineparser.parse_np_haplotypes()
+    haplotypes = lineparser.parse_haplotypes()
 
     cerr('I: calculating pairwise dxy')
     distm = pairwise_dxy( haplotypes )
@@ -66,6 +56,7 @@ def pairwise_dxy(haplotypes):
     idxs = list(range(len(haplotypes[0])))
 
     for i,j in combinations( range(n), 2):
+        cerr('I: pairwising %d - %d' % (i,j))
         x = haplotypes[i]
         y = haplotypes[j]
         d = 0
