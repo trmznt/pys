@@ -1,6 +1,6 @@
 #!/usr/bin/env spcli
 
-from seqpy import cout, cerr
+from seqpy import cout, cerr, gzopen
 from seqpy.cmds import arg_parser
 from seqpy.core.bioio import grpparser
 
@@ -28,7 +28,7 @@ def grp2anno( args ):
     group_parser = grpparser.GroupParser( args )
 
     # open infile
-    with open(args.infile) as infile:
+    with gzopen(args.infile) as infile:
         header = next(infile)
 
     if args.delimiter is not None:
