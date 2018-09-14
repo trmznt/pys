@@ -17,7 +17,6 @@ def init_argparser(p=None):
 
     p = tabparser.init_argparser()
     p.add_argument('-o', '--outfile', default='outfile.fst.txt')
-    p.add_argument('infile')
 
     return p
 
@@ -31,15 +30,14 @@ def geno2fst( args ):
 
     lineparser = tabparser.GenotypeLineParser( args )
     lineparser.set_translator(lineparser.diploid_translator)
-    lineparser.parse_grouping()
 
     cout('Grouping:')
-    groups = lineparser.groups
-    for k in lineparser.groups:
-        cout(' %12s %3d' % (k, len(lineparser.groups[k])))
+    groups = lineparser.parse_grouping()
+    for k in groups:
+        cout(' %12s %3d' % (k, len(groups[k])))
 
     FST = [] # FST indexed by group_keys
-    group_keys = sorted(lineparser.groups.keys())
+    group_keys = sorted(groups.keys())
     cout(group_keys)
 
     # output to file
@@ -78,7 +76,7 @@ def geno2fst( args ):
         if idx % 100 == 0:
             cerr('I: writing position no %d' % idx)
 
-        outfile.write('%s\t%s\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%s\n' % 
+        outfile.write('%s\t%s\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%s\n' %
                         (posinfo[0], posinfo[1], np.max(fst_sites), np.mean(fst_sites), np.median(fst_sites), maf,
                             '\t'.join( '%5.4f' % x for x in fst_sites)))
 
