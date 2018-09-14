@@ -1,6 +1,6 @@
 #!/usr/bin/env spcli
 
-from seqpy import cout, cerr, gzopen
+from seqpy import cout, cerr, cexit, gzopen
 from seqpy.cmds import arg_parser
 from seqpy.core.bioio import grpparser
 
