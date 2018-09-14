@@ -35,14 +35,17 @@ def barplot( args ):
     cerr('I: reading data...')
     df = pandas.read_table( args.infile )
 
+    column = df.columns[args.column - 1]
+    cerr('I: selecting column %s' % column)
+
     if args.asc:
         cerr('I: sorting ascending...')
-        df = df.sort_values( df.columns[args.column - 1])
+        df = df.sort_values( column )
     elif args.desc:
         cerr('I: sorting descending...')
-        df = df.sort_values( df.columns[args.column - 1], ascending=False)
+        df = df.sort_values( column, ascending=False)
 
-    heights = df[df.columns[args.column - 1]]
+    heights = df[column]
 
     cerr('I: plotting...')
     #plt.bar( np.arange(0, len(heights)), heights, 1.0)
