@@ -11,9 +11,7 @@ import numpy as np
 def init_argparser(p=None):
 
     p = tabparser.init_argparser()
-    p.add_argument('--posindex', required=True)
     p.add_argument('-o', '--outfile', required=True)
-    p.add_argument('infile')
 
     return p
 
@@ -26,5 +24,29 @@ def main( args ):
 def geno2geno( args ):
     """ perform pair-wise FST by population """
 
-    lineparser = tabparser.GenotypeLineParser( args )
-    
+    genoparser = tabparser.GenotypeLineParser( args )
+
+    sample_header = genoparser.get_sample_header()
+    filename = args.outfile
+    with open(filename+'.geno.txt','wt') as outfile, open(filename+'.pos.txt','wt') as outpos:
+
+        outfile.write( sample_header )
+        outfile.write('\n')
+        outpos.write( genoparser.get_position_header() )
+        outpos.write('\n')
+        c = 0
+
+        for posline, genoline in genoparser.parse_raw_lines():
+
+            # split posline
+            tokens = posline.split()
+            if (tokens[0], tokens[1]) in genoparser.include_positions:
+                outfile.write( genoline )
+                outpos.write( posline )
+                c += 1
+
+    cerr('I: writing %d positions' % c)
+
+
+
+
