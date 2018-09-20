@@ -42,14 +42,14 @@ def mhtplot( args ):
     if args.column:
         columns = [ df.columns[int(i)] for i in args.column.split(',') ]
     else:
-        columns = df.columns[2:]
+        columns = df.columns[3:]
 
     no_of_figures = len(columns)
 
     regions = df[df.columns[0]]
     region_boundaries = []
     start_idx, region_name = 0, regions[0]
-    colours = cycle(colour_list[:3])
+    colours = cycle(colour_list[:5])
     for idx, region in enumerate(regions):
         if region != region_name:
             region_boundaries.append( (start_idx, idx-1, region_name, next(colours)) )
