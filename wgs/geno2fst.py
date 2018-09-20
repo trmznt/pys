@@ -44,7 +44,7 @@ def geno2fst( args ):
     cout('Writing outfile...')
     outfile = open(args.outfile, 'w')
 
-    outfile.write('CHROM\tPOS\tMAX\tMEAN\tMEDIAN\tMAF\t%s\n' % '\t'.join(group_keys) )
+    outfile.write('CHROM\tPOS\tREGION\tMAX\tMEAN\tMEDIAN\tMAF\t%s\n' % '\t'.join(group_keys) )
 
     idx = 0
     for (posinfo, genolist) in lineparser.parse():
@@ -76,7 +76,7 @@ def geno2fst( args ):
         if idx % 100 == 0:
             cerr('I: writing position no %d' % idx)
 
-        outfile.write('%s\t%s\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%s\n' %
-                        (posinfo[0], posinfo[1], np.max(fst_sites), np.mean(fst_sites), np.median(fst_sites), maf,
+        outfile.write('%s\t%s\t%s\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%s\n' %
+                        (posinfo[0], posinfo[1], posinfo[4], np.max(fst_sites), np.mean(fst_sites), np.median(fst_sites), maf,
                             '\t'.join( '%5.4f' % x for x in fst_sites)))
 

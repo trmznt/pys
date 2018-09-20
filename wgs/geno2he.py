@@ -70,13 +70,13 @@ def geno2dhe( args ):
 
     cerr('I: writing output file')
     with open(args.outfile, 'wt') as outfile:
-        outfile.write('CHROM\tPOS\tFST\tdHe\tHe\t%s\n' % '\t'.join(group_keys))
+        outfile.write('CHROM\tPOS\tREGION\tFST\tdHe\tHe\t%s\n' % '\t'.join(group_keys))
 
         for i in range(len(He)):
             posinfo = lineparser.position[i]
 
-            outfile.write('%s\t%s\t%5.4f\t%5.4f\t%5.4f\t%s\n' % (
-                posinfo[0], posinfo[1], FST[i], dHe[i], He[i], 
+            outfile.write('%s\t%s\t%s\t%5.4f\t%5.4f\t%5.4f\t%s\n' % (
+                posinfo[0], posinfo[1], posinfo[4], FST[i], dHe[i], He[i], 
                 '\t'.join( '%5.4f' % He_groups[g][i] for g in group_keys))
             )
 
