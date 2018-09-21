@@ -18,7 +18,7 @@ def init_argparser(p=None):
 
     p = tabparser.init_argparser()
     p.add_argument('-c', default=None)
-    p.add_argument('--outplot', default='clustremap.png')
+    p.add_argument('-o', '--outplot', default='clustremap.png')
 
     return p
 
@@ -37,6 +37,7 @@ def geno2clustermap( args ):
     	next(colourfile)
     	colors = [ x.strip().split()[1] for x in colourfile ]
     axis = sb.clustermap(np_haplotypes, row_colors = colors, yticklabels=False, method='average')
-    plt.show()
+    plt.savefig(args.outplot)
+
 
 
