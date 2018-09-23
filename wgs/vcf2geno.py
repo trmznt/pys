@@ -37,6 +37,8 @@ def vcf2geno( args ):
             fields=['samples', 'variants/CHROM', 'variants/POS', 'variants/REF',
                 'variants/ALT', 'variants/SNPEFF_GENE_NAME',
                 'variants/SNPEFF_AMINO_ACID_CHANGE', 'calldata/AD'])
+    cerr('[I: read %s site, %s samples]' % (len(vcfset['variants/CHROM']),
+         len(vcfset['samples'])))
 
     sample_file = args.outfile + '.indv.txt'
     pos_file = args.outfile + '.pos.txt'
@@ -70,7 +72,7 @@ def vcf2geno( args ):
         threshold, r_threshold = 0, 0 
     else:
         func = hetgeno
-        threshold, r_threshold = args.threshold, 1.0 - args.threshold
+        threshold, r_threshold = args.minhetratio, 1.0 - args.minhetratio
 
     # write genotype by converting the genotype
     cerr('[I: writing genotype file]')
