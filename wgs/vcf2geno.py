@@ -64,6 +64,14 @@ def vcf2geno( args ):
             outfile.write('%s\t%d\t%s\t%s\t%s\t%s\n' %
                 (chrom, pos, ref, alt[0], gene, aachange))
 
+    # set scheme
+    if args.majority:
+        func = majgeno
+        threshold, r_threshold = 0, 0 
+    else:
+        func = hetgeno
+        threshold, r_threshold = args.threshold, 1.0 - args.threshold
+
     # write genotype by converting the genotype
     cerr('[I: writing genotype file]')
     with open(geno_file, 'w') as outfile:
@@ -71,11 +79,11 @@ def vcf2geno( args ):
         outfile.write('\n')
         for gts in vcfset['calldata/AD']:
             #np.savetxt( outfile, majgeno(gts), fmt="%d", delimiter="\t" )
-            outfile.write( '\t'.join( '%d' % x for x in majgeno(gts)) )
+            outfile.write( '\t'.join( '%d' % x for x in func(gts, threshold, r_threshold)) )
             outfile.write('\n')
 
 
-def majgeno(genotypes):
+def majgeno(genotypes, threshold, r_threshold):
 
     data = np.zeros( shape = len(genotypes), dtype=int )
     for idx, gt in enumerate(genotypes):
@@ -89,7 +97,8 @@ def majgeno(genotypes):
 
     return data
 
-def majgeno_misshet(genotypes):
+
+def majgeno_misshet(genotypes, threshold, r_threshold):
 
     data = np.zeros( shape = len(genotypes), dtype=int )
     for idx, gt in enumerate(genotypes):
@@ -104,7 +113,20 @@ def majgeno_misshet(genotypes):
     return data
 
 
-def hetgeno(genotypes, threshold):
+def hetgeno(genotypes, threshold, r_threshold):
 
-    pass
+    data = np.zeros( shape = len(genotypes), dtype=int )
+    for idx, gt in enumerate(genotypes):
+        gt_tot = gt[0] + gt[1]
+        if gt_tot == 0:
+            data[idx] = -1
+            continue
+        ratio = gt[0]/gt_tot
+        if ratio < threshold:
+            data[idx] = 0
+        elif ratio > r_threshold:
+            data[idx] = 2
+        else:
+            data[idx] = 1
 
+    return data
