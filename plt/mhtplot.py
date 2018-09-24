@@ -19,6 +19,7 @@ def init_argparser():
     p.add_argument('--column', default=None)
     p.add_argument('--dpi', type=int, default=600)
     p.add_argument('--dotsize', type=float, default=0.25)
+    p.add_argument('--autoyscale', default=False, action='store_true')
     p.add_argument('-o', '--outfile', default="outplot.png")
 
     p.add_argument('infile')
@@ -64,17 +65,18 @@ def mhtplot( args ):
         cerr('I: plotting %s' % c)
         points = df[c]
         ax = fig.add_subplot(no_of_figures, 1, idx+1)
-        make_plot(ax, points, region_boundaries, c, args.dotsize)
+        make_plot(ax, points, region_boundaries, c, args.dotsize, autoyscale=args.autoyscale)
 
     fig.tight_layout()
     fig.savefig(args.outfile)
 
 
-def make_plot(axis, points, boundaries, label, dotsize=0.25):
+def make_plot(axis, points, boundaries, label, dotsize=0.25, autoyscale=False):
     for (start_idx, end_idx, region_name, region_colour) in boundaries:
         end_idx += 1
         axis.scatter( np.arange(start_idx, end_idx), points[start_idx:end_idx], dotsize, c=region_colour)
-        axis.set_ylim(0, 1.1)
+        if not autoyscale:
+            axis.set_ylim(0, 1.1)
         axis.set_xlim(-10, len(points) + 10)
         axis.get_xaxis().set_visible(False)
         axis.set_ylabel( label, fontsize=6 )
