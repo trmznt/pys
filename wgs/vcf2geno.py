@@ -69,7 +69,7 @@ def vcf2geno( args ):
     # set scheme
     if args.majority:
         func = majgeno
-        threshold, r_threshold = 0, 0 
+        threshold, r_threshold = 0, 0
     else:
         func = hetgeno
         threshold, r_threshold = args.minhetratio, 1.0 - args.minhetratio
@@ -79,10 +79,14 @@ def vcf2geno( args ):
     with open(geno_file, 'w') as outfile:
         outfile.write( '\t'.join( list( vcfset['samples'])))
         outfile.write('\n')
+        c = 0
         for gts in vcfset['calldata/AD']:
             #np.savetxt( outfile, majgeno(gts), fmt="%d", delimiter="\t" )
             outfile.write( '\t'.join( '%d' % x for x in func(gts, threshold, r_threshold)) )
             outfile.write('\n')
+            c += 1
+            if c % 100 == 0:
+                cerr('[I: writing site %d' % c)
 
 
 def majgeno(genotypes, threshold, r_threshold):
@@ -124,11 +128,11 @@ def hetgeno(genotypes, threshold, r_threshold):
             data[idx] = -1
             continue
         ratio = gt[0]/gt_tot
-        if ratio < threshold:
-            data[idx] = 0
-        elif ratio > r_threshold:
-            data[idx] = 2
-        else:
+        if threshold < ratio < r_threshold and gt[0] > 3 and gt[1] > 3:
             data[idx] = 1
+        elif ratio > 0.5:
+            data[idx] = 0
+        else:
+            data[idx] = 2
 
     return data
