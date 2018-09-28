@@ -14,7 +14,7 @@ import allel
 import numpy as np
 from itertools import combinations
 
-from seqpy.core.funcs.fastdxy import fastdxy
+from seqpy.core.cfuncs import fastdx
 
 def init_argparser(p=None):
 
@@ -39,7 +39,7 @@ def geno2dist( args ):
     haplotypes = lineparser.parse_haplotypes()
 
     cerr('I: calculating pairwise dxy for %d samples' % len(haplotypes))
-    distm = fastdxy.pairwise_dxy( haplotypes )
+    distm = fastdx.pwdist( haplotypes )
 
     cerr('I: writing to outfile')
     with open(args.outfile, 'wb') as outfile:
