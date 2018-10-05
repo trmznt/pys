@@ -13,6 +13,8 @@ def init_argparser(p=None):
 
     p = tabparser.init_argparser()
     p.add_argument('--hierfile', required=True, help="file describing hierarchical groups")
+    p.add_argument('--cumfst', type=float, default=2.0)
+    p.add_argument('--minfst', type=float, default=0.75)
 
     return p
 
@@ -71,7 +73,9 @@ def geno2hierfst( args ):
         FST.sort( reverse=True )
         cumulative_fst = 0.0
         for (v, p) in FST:
-            if cumulative_fst > 2.0:
+            if v < args.minfst:
+                break
+            if cumulative_fst > args.cumfst:
                 break
             selected_positions.append( (p, v) )
             cumulative_fst += v
