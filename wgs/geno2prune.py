@@ -58,6 +58,8 @@ def geno2prune( args ):
             index = pruner.prune_1(genoarray, args.threshold)
         elif args.scheme == 2:
             index = pruner.prune_2(genoarray, region.positions(), args.threshold)
+        elif args.scheme == 21:
+        	index = pruner.prune_21(genoarray, region.positions(), args.threshold)
         elif args.scheme == 3:
             index = pruner.prune_3(genoarray, region.positions(), args.threshold)
         else:
