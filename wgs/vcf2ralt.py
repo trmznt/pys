@@ -12,6 +12,8 @@ except:
     cerr('ERR: require properly installed scikit-allel!')
 import numpy as np
 
+from seqpy.core.cfuncs import genoutils
+
 def init_argparser():
     p = arg_parser("Convert VCF to ratio of alternate ref dataset")
     p.add_argument('-o', '--outfile', default='outdata')
@@ -59,7 +61,7 @@ def vcf2ralt( args ):
         c = 0
         for gts in vcfset['calldata/AD']:
             #np.savetxt( outfile, majgeno(gts), fmt="%d", delimiter="\t" )
-            outfile.write( '\t'.join( '%4.3f' % x for x in ralt(gts)) )
+            outfile.write( '\t'.join( '%4.3f' % x for x in genoutils.ralt(gts)) )
             outfile.write('\n')
             c += 1
             if c % 100 == 0:
