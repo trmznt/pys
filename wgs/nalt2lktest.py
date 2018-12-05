@@ -73,7 +73,7 @@ class LikelihoodTester(object):
         match = mismatch = 0
         for i in range(len(self.samples)):
             # create sample array
-            n_alt_data = np.zero(l)
+            n_alt_data = np.zeros(l)
             for x in range(l):
                 n_alt_data[x] = self.region.M[x][i]
 
