@@ -46,7 +46,7 @@ def nalt2lktest( args ):
             accuracies.append(tester.evaluate())
             cerr('[I: iteration of %d]' % i)
 
-        overall_accuracies.append( k, accuracies)
+        overall_accuracies.append( (k, accuracies) )
 
     import IPython; IPython.embed()
 
