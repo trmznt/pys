@@ -141,16 +141,10 @@ class LikelihoodTester(object):
 
 
     def calculate_likelihood(self, M, n_alt_data):
-
-        log_lk = 0.0
-        for x in range(len(n_alt_data)):
-            n_alt = n_alt_data[x]
-            if n_alt == 0:
-                log_lk += 2*M[x,0]
-            elif n_alt == 2:
-                log_lk += 2*M[x,1]
-            elif n_alt == 1:
-                log_lk += (M[x,0] + M[x,1])
+        n_alt_0 = 2 * M[np.where(n_alt_data == 0), 0]
+        n_alt_1 = M[np.where(n_alt_data == 1), 0] + M[np.where(n_alt_data == 1), 1]
+        n_alt_2 = 2 * M[np.where(n_alt_data == 2), 1]
+        log_lk = np.sum(n_alt_0) + np.sum(n_alt_1) + np.sum(n_alt_2)
 
         return log_lk
 
