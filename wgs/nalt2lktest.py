@@ -92,37 +92,27 @@ class LikelihoodTester(object):
 
         # create empty matrices
         M = {}
-        l = len(self.region.M)
-        for g in self.groups.groups:
-            M[g] = np.full(shape=(l,2), fill_value=0.01)
+        region_M = np.array(self.region.M)
+        l = len(region_M)
+        for group in self.groups.groups:
+            M[group] = np.full(shape=(l, 2), fill_value=0.01)
 
         # filling-up matrices
         # we are iterating column wise
-        for i in range(len(self.samples)):
-            sample = self.samples[i]
+        for i, sample in enumerate(self.samples):
             group = self.groups.group_info[sample]
+            n_alt = region_M[:, i]
+            M_group = M[group]
 
-            for x in range(l):
-                n_alt = self.region.M[x][i]
-                M_grp = M[group]
-                if n_alt == 0:
-                    M_grp[x,0] += 2
-                elif n_alt == 2:
-                    M_grp[x,1] += 2
-                elif n_alt == 1:
-                    M_grp[x,0] += 1
-                    M_grp[x,1] += 1
+            M_group[n_alt == 0, 0] += 2
+            M_group[n_alt == 1] += 1
+            M_group[n_alt == 2, 1] += 2
 
         # convert M into fractions
-        for g in M:
-            M_grp = M[g]
-            for x in range(l):
-                _0 = M_grp[x,0]
-                _1 = M_grp[x,1]
-                total = _0 + _1
-                M_grp[x,0] = _0 / total
-                M_grp[x,1] = _1 / total
-            M[g] = np.log(M_grp)
+        for group in M:
+            M_group = M[group]
+            total = np.sum(M_group, axis=1)
+            M[group] = np.log(M_group / total[:, None])
 
         self.matrices = M
         return M
