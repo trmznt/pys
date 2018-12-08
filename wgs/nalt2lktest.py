@@ -141,17 +141,17 @@ class LikelihoodTester(object):
 
 
     def calculate_likelihood(self, M, n_alt_data):
-        n_alt_0 = 2 * M[n_alt_data == 0, 0]
+        n_alt_0 = 2 * np.sum(M[n_alt_data == 0, 0])
 
         # optimize for scarce amount of 1 alt data
         if M[n_alt_data == 1].size:
-            n_alt_1 = M[n_alt_data == 1, 0] + M[n_alt_data == 1, 1]
+            n_alt_1 = np.sum(M[n_alt_data == 1])
         else:
-            n_alt_1 = np.array([])
+            n_alt_1 = 0
 
-        n_alt_2 = 2 * M[n_alt_data == 2, 1]
+        n_alt_2 = 2 * np.sum(M[n_alt_data == 2, 1])
 
-        log_lk = np.sum(n_alt_0) + np.sum(n_alt_1) + np.sum(n_alt_2)
+        log_lk = n_alt_0 + n_alt_1 + n_alt_2
 
         return log_lk
 
