@@ -66,17 +66,17 @@ class LikelihoodTester(object):
         lks.sort()
         return lks[-1][1]
 
+
     def evaluate(self):
         """ return the accuracy of the region """
 
-        l = len(self.region.M)
+        region_M = np.array(self.region.M)
+        l = len(region_M)
         match = mismatch = 0
-        for i in range(len(self.samples)):
-            # create sample array
-            n_alt_data = np.zeros(l)
-            for x in range(l):
-                n_alt_data[x] = self.region.M[x][i]
 
+        for i, _ in enumerate(self.samples):
+            # create sample array
+            n_alt_data = region_M[:, i]
             est_group = self.estimate(n_alt_data)
 
             if est_group == self.groups.group_info[self.samples[i]]:
