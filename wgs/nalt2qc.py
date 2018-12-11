@@ -1,32 +1,24 @@
-# ralt2qc.py
-#
-# report sample and snp QC
-
-
-
-from seqpy import cout, cerr, cexit
-from seqpy.cmds import arg_parser
+""" ralt2qc.py
+    report sample and SNP QC
+"""
+import random
 
 import numpy as np
 
-from seqpy.core.cfuncs import genoutils
+from seqpy import cout, cerr, cexit
+from seqpy.cmds import arg_parser
 from seqpy.core.bioio import naltparser
+from seqpy.core.cfuncs import genoutils
 
-import random
 
 def init_argparser():
-    p = arg_parser("Assess SNP and sample quality from ralt file")
+    parser = arg_parser('Assess SNP and sample quality from ralt file')
+    parser = naltparser.init_argparser(parser)
+
+    return parser
 
 
-    p = naltparser.init_argparser(p)
-
-    return p
-
-def main(args):
-    nalt2qc( args )
-
-
-def nalt2qc( args ):
+def nalt2qc(args):
     """ write to out.imiss & out.lmiss
         for each sample and SNPS, evaluate:
             N_MISS
@@ -38,31 +30,67 @@ def nalt2qc( args ):
         SAMPLE N_SNP N_MISS F_MISS N_HETS F_HETS
 
         out.lmiss:
-        CHR POS N_SNP N_MISS F_MISS N_HETS F_HETS
-
-
+        CHR POS N_SAMPLE N_MISS F_MISS N_HETS F_HETS
      """
-
-    nalt_parser = naltparser.NAltLineParser( args, datatype='nalt')
-
+    nalt_parser = naltparser.NAltLineParser(args, datatype='nalt')
     samples = nalt_parser.parse_samples()
     whole = nalt_parser.parse_whole()
 
     # create an array for N samples with column:
     # N_SNP N_MISS N_HETS
+    asamples = np.zeros(shape=(len(samples), 3))
 
-    # for SNPs, appending this list
+    # container for lmiss output
+    chr_pos = []
     snps = []
 
-    for (pos, n_alt) in whole.parse_positions():
-        # do the counting here
+    # -1 indicate missing data, 1 indicate heterozygous SNP
+    for pos, n_alt in whole.parse_positions():
+        # gather imiss data
+        asamples[range(n_alt.size), 0] += 1
+        asamples[n_alt == -1, 1] += 1
+        asamples[n_alt == 1, 2] += 1
 
-    # do the stats here
+        # gather lmiss data
+        chromosome = pos[0]
+        position = pos[1]
+        n_sample = len(n_alt)
+        n_miss = np.where(n_alt == -1)[0].size
+        n_het = np.where(n_alt == 1)[0].size
+        chr_pos.append((chromosome, position))
+        snps.append((n_sample, n_miss, n_het))
 
-    # write the outputs
+    # create imiss stats
+    imiss = np.zeros(shape=(len(samples), 5))
+    n_snps = asamples[:, 0].sum()
+    imiss[:, 0] = asamples[:, 0]
+    imiss[:, 1] = asamples[:, 1]
+    imiss[:, 2] = asamples[:, 1] / n_snps
+    imiss[:, 3] = asamples[:, 2]
+    imiss[:, 4] = asamples[:, 2] / n_snps
+
+    # create lmiss stats
+    snps = np.array(snps)
+    n_samples = snps[:, 0].sum()
+    lmiss = np.zeros(shape=(len(snps), 5))
+    lmiss[:, 0] = snps[:, 0]
+    lmiss[:, 1] = snps[:, 1]
+    lmiss[:, 2] = snps[:, 1] / n_samples
+    lmiss[:, 3] = snps[:, 2]
+    lmiss[:, 4] = snps[:, 2] / n_samples
+
+    # output imiss
+    with open('out.imiss', 'w') as iout:
+        for sample, i in zip(samples, imiss):
+            iout.write('{}\t'.format(sample))
+            iout.write('{}\n'.format('\t'.join(map(str, i))))
+
+    with open('out.lmiss', 'w') as lout:
+        for (chrom, pos), l in zip(chr_pos, lmiss):
+            lout.write('{}\t{}\t'.format(chrom, pos))
+            lout.write('{}\n'.format('\t'.join(map(str, l))))
 
 
-
-
-
-
+# the arguments are parsed by spcli if there is a init_argparser
+def main(args):
+    nalt2qc(args)
