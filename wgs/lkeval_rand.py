@@ -7,6 +7,7 @@ from seqpy import cout, cerr, cexit
 from seqpy.cmds import arg_parser
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from seqpy.core.cfuncs import genoutils, lk_eval
@@ -49,13 +50,18 @@ def lkeval_rand( args ):
     group_keys = list(itertools.compress(group_keys, mask))
     cerr('[I - masking to %d samples]' % len(samples))
 
-    region = nalt_parser.parse_whole(n=10000, mask=mask)
+    region = nalt_parser.parse_whole(mask=mask)
 
     haplotypes = region.haplotypes()
 
-    result = evaluate_rand( haplotypes, group_keys, k=100, n_inner=10, n_outer=10)
+    accuracies = []
+    for k in [ int(x) for x in args.k.split(',') ]:
 
-    lk_eval.calculate_accuracy(result, args.outfile)
+        result = evaluate_rand( haplotypes, group_keys, k=k, n_inner=10, n_outer=10)
+        accuracies.append( lk_eval.calculate_accuracy(result, k) )
+
+    result = pd.concat( accuracies )
+    result.to_csv(args.outfile, sep='\t', index=False)
 
 
 def evaluate_rand( haplotypes, group_keys, k, n_inner=10, n_outer=10 ):
