@@ -12,7 +12,7 @@ from seqpy.core.cfuncs import genoutils
 
 
 def init_argparser():
-    parser = arg_parser('Assess SNP and sample quality from ralt file')
+    parser = arg_parser('Assess SNP and sample quality from nalt file')
     parser = naltparser.init_argparser(parser)
 
     return parser
@@ -81,11 +81,13 @@ def nalt2qc(args):
 
     # output imiss
     with open('out.imiss', 'w') as iout:
+        iout.write('INDV\tN_SNP\tN_MISS\tF_MISS\tN_HETS\tF_HETS\n')
         for sample, i in zip(samples, imiss):
             iout.write('{}\t'.format(sample))
             iout.write('{}\n'.format('\t'.join(map(str, i))))
 
     with open('out.lmiss', 'w') as lout:
+        lout.write('CHROM\tPOS\tN_SAMPLE\tN_MISS\tF_MISS\tN_HETS\tF_HETS\n')
         for (chrom, pos), l in zip(chr_pos, lmiss):
             lout.write('{}\t{}\t'.format(chrom, pos))
             lout.write('{}\n'.format('\t'.join(map(str, l))))
