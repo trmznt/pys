@@ -1,7 +1,7 @@
 #!/usr/bin/env spcli
 
 # this script convert VCF file to 1) ralt (ratio of alternate allele) matrix and 2) SNP/position manifest
-# please note that this script needs to be run under spcli (seqpy)
+# and 3) nmdp (no of minor read). Please note that this script needs to be run under spcli (seqpy)
 
 from seqpy import cout, cerr, cexit
 from seqpy.cmds import arg_parser
@@ -38,6 +38,7 @@ def vcf2ralt( args ):
 
     pos_file = args.outfile + '.pos.txt'
     geno_file = args.outfile + '.ralt.txt'
+    nmdp_file = args.outfile + '.nmdp.txt'
 
     # write position
     # position file is:
@@ -55,17 +56,24 @@ def vcf2ralt( args ):
 
     # write genotype by converting the genotype
     cerr('[I: writing genotype file]')
-    with open(geno_file, 'w') as outfile:
+    with open(geno_file, 'w') as outfile, open(nmdp_file, 'w') as outnmdp:
         outfile.write( '\t'.join( list( vcfset['samples'])))
         outfile.write('\n')
+        outnmdp.write( '\t'.join( list( vcfset['samples'])))
+        outnmdp.write('\n')
         c = 0
         for gts in vcfset['calldata/AD']:
             #np.savetxt( outfile, majgeno(gts), fmt="%d", delimiter="\t" )
-            outfile.write( '\t'.join( '%4.3f' % x for x in genoutils.ralt(gts)) )
-            outfile.write('\n')
+            ratios, nread = genoutils.ralt(gts)
+            #outfile.write( '\t'.join( '%4.3f' % x for x in genoutils.ralt(gts)) )
+            #outfile.write('\n')
+            np.savetxt(outfile, [ratios], delimiter='\t', fmt='%4.3f')
+            np.savetxt(outnmdp, [nread], delimiter='\t', fmt='%d')
             c += 1
-            if c % 100 == 0:
-                cerr('[I: writing site %d' % c)
+            if c % 500 == 0:
+                cerr('[I: writing site %d]' % c)
+
+    cerr('[I: finish writing %d sites]' % c)
 
 
 def ralt(genotypes):
