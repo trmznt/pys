@@ -35,9 +35,9 @@ def ralt2iteqc( args ):
 
     infile = gzopen(args.infile)
     samples = next(infile).strip().split('\t')
-    sample_idx = list(range(len(samples)))
+    sample_idx = np.arange(len(samples))
     M = np.loadtxt(infile, delimiter='\t')
-    site_idx = list(range(len(samples)))
+    site_idx = np.arange(len(samples))
     cerr('[I - reading %d sites for %d samples' % (len(site_idx), len(sample_idx)))
 
     for i in range(iter):
@@ -51,27 +51,34 @@ def ralt2iteqc( args ):
 
 
 def check_sanity(M, site_idx, sample_idx):
+    shape = M.shape
     # sanity checking
     if len(sample_idx) != shape[1]:
         cexit('[E - inconsistent M shape and no of samples!]')
     if len(site_idx) != shape[0]:
         cexit('[E - inconsistent M shape and no of sites!]')
 
+
 def filter_lmiss(M, site_idx, sample_idx, lmiss):
-    shape = M.shape
 
     site_missingness = np.count_nonzero(M < 0, axis=1) / len(sample_idx)
-    flags = site_missingness < lmiss
+    indexes = wp.where( site_missingness < lmiss )
 
-    M2 = M[ np.where( flags ) ]
-    site_idx2 = site_idx[ np.where( flags ) ]
+
+    M2 = M[ indexes ]
+    site_idx2 = site_idx[ indexes ]
 
     return M2, site_idx2, sample_idx
 
 
-def filter_imiss(M, sample_idx, imiss):
-    return M, sample_idx
+def filter_imiss(M, site_idx, sample_idx, imiss):
+    indv_missingness = np.count_nonzero(M < 0, axis=0) / len(site_idx)
+    indexes = wp.where( indv_missingness < imiss )
+
+    M2 = M[:, indexes]
+    sample_idx2 = sample_idx[ indexes ]
+    return M, site_idx, sample_idx
 
 
-def filter_mac(M, site_idx, mac):
-    return M, site_idx
+def filter_mac(M, site_idx, sample_idx, mac):
+    return M, site_idx, sample_idx
