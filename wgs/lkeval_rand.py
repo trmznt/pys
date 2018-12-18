@@ -57,6 +57,7 @@ def lkeval_rand( args ):
     accuracies = []
     for k in [ int(x) for x in args.k.split(',') ]:
 
+        cerr('[I - iterating for k = %d]' % k)
         result = evaluate_rand( haplotypes, group_keys, k=k, n_inner=10, n_outer=10)
         accuracies.append( lk_eval.calculate_accuracy(result, k) )
 
