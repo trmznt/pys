@@ -5,6 +5,7 @@
 
 from seqpy import cout, cerr, cexit
 from seqpy.cmds import arg_parser
+import time
 
 try:
     import allel
@@ -29,12 +30,13 @@ def vcf2ralt( args ):
 
     # read the mighty VCF file
     cerr('[I: reading VCF...]')
+    start_time = time.monotonic()
     vcfset = allel.read_vcf(args.infile,
             fields=['samples', 'variants/CHROM', 'variants/POS', 'variants/REF',
                 'variants/ALT', 'variants/SNPEFF_GENE_NAME',
                 'variants/SNPEFF_AMINO_ACID_CHANGE', 'calldata/AD'])
-    cerr('[I: read %s site, %s samples]' % (len(vcfset['variants/CHROM']),
-         len(vcfset['samples'])))
+    cerr('[I: read %s site, %s samples in %d secs]' % (len(vcfset['variants/CHROM']),
+         len(vcfset['samples']), time.monotonic() - start_time))
 
     pos_file = args.outfile + '.pos.txt'
     geno_file = args.outfile + '.ralt.txt'
@@ -70,10 +72,10 @@ def vcf2ralt( args ):
             np.savetxt(outfile, [ratios], delimiter='\t', fmt='%4.3f')
             np.savetxt(outnmdp, [nread], delimiter='\t', fmt='%d')
             c += 1
-            if c % 500 == 0:
+            if c % 1000 == 0:
                 cerr('[I: writing site %d]' % c)
 
-    cerr('[I: finish writing %d sites]' % c)
+    cerr('[I: finish writing %d sites in %d secs]' % (c, time.monotonic() - start_time))
 
 
 def ralt(genotypes):
