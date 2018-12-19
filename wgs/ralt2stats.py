@@ -57,11 +57,11 @@ def raltplot( args ):
             if c % 500 == 0:
                 cerr('[I - reading site %d]' % c)
 
-
     cerr('[I - finish reading %d site]' % c)
     cerr('[I - plotting %d het SNPs]' % len(ratios))
-    ax = sns.jointplot(ratios, n_mdps).set_axis_labels("ratio", "minor DP")
+    g = sns.jointplot(ratios, n_mdps, s=0.5).set_axis_labels("ratio", "minor DP")
     #ax = sns.jointplot(x='r', y='n', data=df)
+    g.ax_joint.set_yscale('log')
 
     #ax = sns.distplot(ratios, bins=np.arange(0.01, 0.5, 0.01))
     plt.savefig(args.outplot)
