@@ -1,7 +1,7 @@
 """ ralt2qc.py
     report sample and SNP QC
 """
-import random
+import random, time
 
 import numpy as np
 
@@ -31,10 +31,13 @@ def nalt2qc(args):
 
         out.lmiss:
         CHR POS N_SAMPLE N_MISS F_MISS N_HETS F_HETS
-     """
+    """
+
+    start_time = time.monotonic()
     nalt_parser = naltparser.NAltLineParser(args, datatype='nalt')
     samples = nalt_parser.parse_samples()
     whole = nalt_parser.parse_whole()
+    cerr('[I - reading input file in %s secs]' % ( time.monotonic() - start_time))
 
     # create an array for N samples with column:
     # N_SNP N_MISS N_HETS
