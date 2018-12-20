@@ -88,7 +88,7 @@ def filter_imiss(M, site_idx, sample_idx, imiss):
     cerr('[I - filtering for sample missingness < %4.3f]' % imiss)
     check_sanity(M, site_idx, sample_idx)
     indv_missingness = np.count_nonzero(M < 0, axis=0) / len(site_idx)
-    indexes = wp.where( indv_missingness < (1.0 - imiss) )
+    indexes = np.where( indv_missingness < (1.0 - imiss) )
 
     M2 = M[:, indexes]
     sample_idx2 = sample_idx[ indexes ]
@@ -99,8 +99,16 @@ def filter_imiss(M, site_idx, sample_idx, imiss):
 
 def filter_mac(M, site_idx, sample_idx, mac):
 
-    cerr('[I - filtering for MAC > %d]' % mac)
+    cerr('[I - filtering for MAC >= %d]' % mac)
     check_sanity(M, site_idx, sample_idx)
     allele_0 = np.count_nonzero(M < 0.5, axis=1)
+    allele_1 = len(sample_idx) - allele_0
+    allele_mac = np.minimum(allele_0, allele_1)
+    indexes = np.where( allele_mac >= mac )
 
-    return M, site_idx, sample_idx
+    M2 = M[indexes]
+    site_idx2 = site_idx[ indexes ]
+    cerr('[I - keeping %d from %d sites]' % (len(site_idx2), len(site_idx)))
+    #import IPython; IPython.embed()
+
+    return M2, site_idx2, sample_idx
