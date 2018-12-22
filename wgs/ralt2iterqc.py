@@ -47,12 +47,17 @@ def ralt2iterqc( args ):
 
     for i in range(args.iter):
         cerr('[I - ITER -> %d]' % (i+1))
+        site_N = len(site_idx)
+        sample_N = len(sample_idx)
         if args.lmiss > 0:
             M, site_idx, sample_idx = filter_lmiss(M, site_idx, sample_idx, args.lmiss)
         if args.imiss > 0:
             M, site_idx, sample_idx = filter_imiss(M, site_idx, sample_idx, args.imiss)
         if args.mac > 0:
             M, site_idx, sample_idx = filter_mac(M, site_idx, sample_idx, args.mac)
+        if site_N == len(site_idx) and sample_N == len(sample_idx):
+            cerr('[I - filtering has converged]')
+            break
 
 
     # filtering order: lmiss > imiss > mac
@@ -62,7 +67,7 @@ def check_sanity(M, site_idx, sample_idx):
     shape = M.shape
     # sanity checking
     if len(sample_idx) != shape[1]:
-        print( len(sample_idx), shape[1] )
+        print( len(sample_idx), shape )
         cexit('[E - inconsistent M shape and no of samples!]')
     if len(site_idx) != shape[0]:
         cexit('[E - inconsistent M shape and no of sites!]')
@@ -73,10 +78,10 @@ def filter_lmiss(M, site_idx, sample_idx, lmiss):
     cerr('[I - filtering for SNP missingness < %4.3f]' % lmiss)
     check_sanity(M, site_idx, sample_idx)
     site_missingness = np.count_nonzero(M < 0, axis=1) / len(sample_idx)
-    indexes = np.where( site_missingness < (1.0 - lmiss) )
+    indexes = np.where( site_missingness <= (1.0 - lmiss) * site_missingness.max())
 
-    M2 = M[ indexes ]
-    site_idx2 = site_idx[ indexes ]
+    M2 = M[ indexes[0], : ]
+    site_idx2 = site_idx[ indexes[0] ]
     cerr('[I - keeping %d from %d sites]' % (len(site_idx2), len(site_idx)))
     #import IPython; IPython.embed()
 
@@ -88,13 +93,13 @@ def filter_imiss(M, site_idx, sample_idx, imiss):
     cerr('[I - filtering for sample missingness < %4.3f]' % imiss)
     check_sanity(M, site_idx, sample_idx)
     indv_missingness = np.count_nonzero(M < 0, axis=0) / len(site_idx)
-    indexes = np.where( indv_missingness < (1.0 - imiss) )
+    indexes = np.where( indv_missingness <= (1.0 - imiss) * indv_missingness.max() )
 
-    M2 = M[:, indexes]
-    sample_idx2 = sample_idx[ indexes ]
+    M2 = M[:, indexes[0]]
+    sample_idx2 = sample_idx[ indexes[0] ]
     cerr('[I - keeping %d from %d samples]' % (len(sample_idx2), len(sample_idx)))
 
-    return M, site_idx, sample_idx
+    return M2, site_idx, sample_idx2
 
 
 def filter_mac(M, site_idx, sample_idx, mac):
@@ -106,8 +111,8 @@ def filter_mac(M, site_idx, sample_idx, mac):
     allele_mac = np.minimum(allele_0, allele_1)
     indexes = np.where( allele_mac >= mac )
 
-    M2 = M[indexes]
-    site_idx2 = site_idx[ indexes ]
+    M2 = M[indexes[0], :]
+    site_idx2 = site_idx[ indexes[0] ]
     cerr('[I - keeping %d from %d sites]' % (len(site_idx2), len(site_idx)))
     #import IPython; IPython.embed()
 
