@@ -38,6 +38,7 @@ def ralt2exhqc( args ):
 
     # create sample missingness
     indv_missing = np.count_nonzero(M < 0, axis=0) / len(sample_idx)
+    complete_indv = np.count_nonzero(indv_missing == 0.0)
 
     # sorted by args
     indv_idx = np.argsort( indv_missing )
@@ -45,7 +46,7 @@ def ralt2exhqc( args ):
     n_samples = []
     n_snps = []
 
-    for k in range(len(indv_idx) if args.k < 0 else args.k, 0, -1):
+    for k in range(len(indv_idx) if args.k < 0 else args.k, complete_indv, -1):
         sample_indexes = indv_idx[:k]
 
         cerr('[I - filtering using %d samples]' % len(sample_indexes))
