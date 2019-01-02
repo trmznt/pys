@@ -17,6 +17,7 @@ def init_argparser(p=None):
 
     p.add_argument('-k', type=int, default=-1)
     p.add_argument('-n', type=int, default=-1)
+    p.add_argument('-o', '--outfile', default='out.exhqc.txt')
     p.add_argument('infile')
 
     return p
@@ -45,17 +46,21 @@ def ralt2exhqc( args ):
 
     n_samples = []
     n_snps = []
+    n_isnps = []
 
-    for k in range(len(indv_idx) if args.k < 0 else args.k, complete_indv, -1):
+    start_indv = len(indv_idx) if args.k < 0 else args.k
+    cerr('[I - iteration start from %d to %d samples' % (start_indv, complete_indv-1))
+    for k in range(start_indv, complete_indv-1, -1):
         sample_indexes = indv_idx[:k]
 
         cerr('[I - filtering using %d samples]' % len(sample_indexes))
-        filtered_site_idx = filter_site_idx(M, sample_indexes, site_idx)
+        filt_site_idx, inf_site_idx = filter_site_idx(M, sample_indexes, site_idx)
         n_samples.append( len(sample_indexes) )
-        n_snps.append( len(filtered_site_idx) )
+        n_snps.append( len(filt_site_idx) )
+        n_isnps.append( len(inf_site_idx))
 
-    df = pd.DataFrame({ 'N_SAMPLES': n_samples, 'N_SNPS': n_snps})
-    df.to_csv('outfile.txt', sep='\t', index=False)
+    df = pd.DataFrame({ 'N_SAMPLES': n_samples, 'N_SNPS': n_snps, 'N_ISNPS': n_isnps})
+    df.to_csv(args.outfile, sep='\t', index=False)
 
 
 def filter_site_idx(M, sample_idx, site_idx, lmiss=1.0, mac=1):
@@ -63,13 +68,13 @@ def filter_site_idx(M, sample_idx, site_idx, lmiss=1.0, mac=1):
 
     M = M[:, sample_idx]
 
-    M2, site_idx, _ = filter_lmiss(M, site_idx, sample_idx, lmiss)
-    if len(site_idx) == 0:
-        return site_idx
+    M2, site_idx1, _ = filter_lmiss(M, site_idx, sample_idx, lmiss)
+    if len(site_idx1) == 0:
+        return site_idx1, site_idx1
 
-    M2, site_idx, _ = filter_mac(M2, site_idx, sample_idx, mac)
+    M2, site_idx2, _ = filter_mac(M2, site_idx1, sample_idx, mac)
 
-    return site_idx
+    return site_idx1, site_idx2
 
 
 def check_sanity(M, site_idx, sample_idx):
