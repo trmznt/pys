@@ -5,8 +5,6 @@ from seqpy.cmds import arg_parser
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 import io, time
 
@@ -46,8 +44,21 @@ def ralt2exhqc( args ):
     indv_idx = np.argsort( indv_missing )
 
     if args.s > 0:
-        do_export_ralt(M, sample_idx, site_idx, args)
+        do_export_ralt(M, sample_idx, site_idx, indv_idx, args)
+    else:
+        do_exhqc_ralt(M, sample_idx, site_idx, indv_idx, complete_indv, args)
 
+
+def do_export_ralt(M, sample_idx, site_idx, indv_idx, args):
+
+    cerr('[I - exporting sample and position indexes for %d samples' % args.s)
+    collected_samples = indv_idx[:args.s]
+    filt_site_idx, inf_site_idx = filter_site_idx(M, collected_samples, site_idx)
+    np.savetxt('exhqc.indv.txt', collected_samples, fmt='%d')
+    np.savetxt('exhqc.pos.txt', inf_site_idx, fmt='%d')
+
+
+def do_exhqc_ralt(M, sample_idx, site_idx, indv_idx, complete_indv, args):
 
     n_samples = []
     n_snps = []
