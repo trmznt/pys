@@ -13,6 +13,8 @@ def init_argparser(p=None):
     if not p:
         p = arg_parser("ralt2allqc - checking exhaustively")
 
+    p.add_argument('--mac', type=int, default=1, help="Minor Allele Count")
+    p.add_argument('--miss', type=float, default=1.0, help='Missingness fraction threshold')
     p.add_argument('-k', type=int, default=-1, help='start from individual/samples no K')
     p.add_argument('-n', type=int, default=-1, help='only read the first N row from infile')
     p.add_argument('-o', '--outfile', default='out.exhqc.txt')
@@ -70,7 +72,7 @@ def do_exhqc_ralt(M, sample_idx, site_idx, indv_idx, complete_indv, args):
         sample_indexes = indv_idx[:k]
 
         cerr('[I - filtering using %d samples]' % len(sample_indexes))
-        filt_site_idx, inf_site_idx = filter_site_idx(M, sample_indexes, site_idx)
+        filt_site_idx, inf_site_idx = filter_site_idx(M, sample_indexes, site_idx, args.miss, args.mac)
         n_samples.append( len(sample_indexes) )
         n_snps.append( len(filt_site_idx) )
         n_isnps.append( len(inf_site_idx))
