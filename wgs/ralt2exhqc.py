@@ -13,8 +13,8 @@ def init_argparser(p=None):
     if not p:
         p = arg_parser("ralt2allqc - checking exhaustively")
 
-    p.add_argument('-k', type=int, default=-1)
-    p.add_argument('-n', type=int, default=-1)
+    p.add_argument('-k', type=int, default=-1, help='start from individual/samples no K')
+    p.add_argument('-n', type=int, default=-1, help='only read the first N row from infile')
     p.add_argument('-o', '--outfile', default='out.exhqc.txt')
     p.add_argument('-s', type=int, default=-1)
     p.add_argument('infile')
