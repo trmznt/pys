@@ -42,7 +42,7 @@ def ralt2nalt( args ):
     # write to outfile
     with open(args.outfile, 'w') as outfile:
         # write header
-        outfile.write(ralt_parser.sample_header)
+        outfile.write(ralt_parser.get_sample_header())
         outfile.write('\n')
         np.savetxt(outfile, region.M, fmt ='%d', delimiter = '\t')
 
