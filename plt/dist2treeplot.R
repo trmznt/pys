@@ -12,12 +12,14 @@ option.list <- list(
                  first column is the label and
                  second column is the colour."),
   make_option(c("-L", "--label"), action = "store_true",
-              help = "Add label to tree tip (Default: FALSE).",
+              help = "Add label to tree tip (Default: Do not add label).",
               default = FALSE),
   make_option(c("-e", "--edge_colourisation"),
               help = "Algorithm for colouring edges (Default: complete).
                  Choices are: \"complete\", \"tip_only\"",
               default = "complete"),
+  make_option(c("-O", "--outtree"),
+              help = "Output file tree name (Default: no output)."),
   make_option(c("-o", "--output"),
               help = "Output file name (Default: input file name + pdf)."),
   make_option(c("-t", "--type"),
@@ -49,6 +51,11 @@ if (is.null(args$options$colour)) {
 } else {
   annotations <- read.delim(args$options$colour)
   tip.colours <- as.vector(annotations$COLOUR)
+  # sanity check
+  if (Ntip(tree) != length(tip.colours)) {
+    warning("Number of sample (", Ntip(tree), ") does not match with ",
+            "number of colours (", length(tip.colours), ")")
+  }
   edge.colours <- tip.colours[tree$edge[, 2]]
   if (args$options$edge_colourisation == "tip_only") {
     edge.colours[is.na(edge.colours)] <- "#E5E4E2"
@@ -94,6 +101,10 @@ if (is.null(args$options$output)) {
 }
 output.file <- paste(output.name, "pdf", sep = ".")
 pdf(file = output.file, title = output.name, width = 16.5, height = 9.27)
+if (!is.null(args$options$outtree)) {
+  outtree.file <- args$options$outtree
+  write.tree(tree, file = outtree.file)
+}
 
 phylo.type <- args$option$type
 use.label <- args$options$label
