@@ -9,6 +9,8 @@ def init_argparser():
     p = arg_parser("Create colour annotation based on header of a file")
     p = grpparser.init_argparser(p)
     p.add_argument('--delimiter', default='\t')
+    p.add_argument('-s', default=False, action='store_true',
+        help = 'include sample size of each group')
     p.add_argument('-o', '--outfile', default="outfile.anno")
 
     p.add_argument('infile')
@@ -50,4 +52,6 @@ def grp2anno( args ):
     with open(args.outfile + '.group.txt', 'w') as outfile:
         outfile.write('GROUP\tCOLOUR\n')
         for g, c in zip( group_keys, group_parser.group_colour_list(group_keys)):
+            if args.s:
+                g = '%s (%d)' % (g, len(groups[g]))
             outfile.write('%s\t%s\n' % (g, c))
