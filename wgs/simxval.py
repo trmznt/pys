@@ -104,7 +104,7 @@ def flatten(lst):
 
 def traverse(tree, level=0):
 
-    print(tree)
+    #print(tree)
     if len(tree) != 2:
         raise RuntimeError('[E - FATAL PROG ERR: misformat tree structure: child size=%d]' % len(tree))
 
@@ -147,7 +147,9 @@ class HierarchicalFSTSelector(RandomSelector):
 
     def select(self, haplotypes, groups, haplotest, k=None):
 
-        # we don't use k for this selector
+        # we use k for redundancy parameters
+        if k == 0 or k is None:
+            k = 1
 
         candidate_L = []     # [ (pos, rank, no_actual_pops)]
         # we traverse through the tree
@@ -174,23 +176,50 @@ class HierarchicalFSTSelector(RandomSelector):
             sortidx = np.argsort( fst )
 
             # get highest FST
-            highest_fst_pos = sortidx[-1]
+            highest_fst_pos = sortidx[-(k+1):-1]
             highest_fst_val = fst[ highest_fst_pos ]
             #cerr('[I - highest FST: %5.4f at %d for pops %s and %s' % (highest_fst_val, highest_fst_pos, pop1, pop2))
 
             # check suitability of SNPs
-            if highest_fst_val < 0.9:
-                cerr( '[I - please consider to break (or perform micro analysis of) population %s and %s]' % (pop1, pop2))
-                # get the second highest FST with the lowest r^2
+            if highest_fst_val.sum() < 0.9 * k:
+                #cerr( '[I - please consider to break (or perform micro analysis of) population %s and %s]' % (pop1, pop2))
 
-                # calculate r^2 across these dataset first
-                # r2 = calculate_r2( haplotypes )
+                #mport IPython; IPython.embed()
+
+                # 1st approach: find SNPs wwith DT
+
+                X_train = X_test = combined_haplotypes = np.append(haplotypes1, haplotypes2, axis=0)
+                y_train = y_test = combined_groups = np.array( [1] * len(haplotypes1) + [2] * len(haplotypes2) )
+
+                best_score = (-1, None, None, None)
+                for i in range(3):
+
+                    classifier = DecisionTreeClassifier(class_weight='balanced', random_state = self.randomstate)
+                    classifier = classifier.fit(X_train, y_train)
+                    features = classifier.tree_.feature
+
+                    model = FixSNPSelector(features)
+                    lk_predictions, snplist, _ = fit_and_predict(model, X_train, y_train, X_test, k)
+                    scores = lkprof.calculate_scores(y_test,  lk_predictions, len(snplist), 'lk', i)
+
+                    f_score = scores.loc[ scores['REG'] == 'MEDIAN', 'F'].values[0]
+                    if f_score > best_score[0]:
+                        best_score = (f_score, scores, None, snplist.tolist())
+
+                for p in best_score[3]:
+                    candidate_L.append( (p, level, n_pops) )
+                cerr('[I - F: %5.4f SNP: %d for pop %s <> %s]' % (best_score[0], len(best_score[3]), pop1, pop2))
+
+                continue
+
+                # 2nd approach: find 2 SNPs with highest r^2(st) eg r^2 subpopulation vs r^2 total population
 
             # append to candidate_L
-            candidate_L.append( (highest_fst_pos, level, n_pops) )
+            for p in highest_fst_pos:
+                candidate_L.append( (p, level, n_pops) )
 
         # process candidate_L
-        L = np.array( sorted( [ x[0] for x in candidate_L] ) )
+        L = np.unique( np.array( sorted( [ x[0] for x in candidate_L] ) ) )
 
         # return snp position
         return (L, None)
