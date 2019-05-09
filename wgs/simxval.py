@@ -25,16 +25,18 @@ from seqpy.core.cfuncs import lkprof
 
 def init_argparser():
     parser = arg_parser("simxval.py - simulate cross-validation of likelihood evaluator with various model and k")
-    parser.add_argument('-m', '--method', help ='method to use : list rand dt hfst')
+    parser.add_argument('-m', '--method', help ='method to use : list rand dt hfst hhfstdt')
     parser.add_argument('-k', default='100,50', help='k list')
     parser.add_argument('--iter', default=5, type=int, help='iteration per fold')
     parser.add_argument('--repeats', default=20, type=int, help='n repeats of fold')
     parser.add_argument('--fold', default=10, type=int)
     parser.add_argument('-o', '--outfile', default='out.accuracy.dt.txt')
     parser.add_argument('--outsnp', default=None)
-    parser.add_argument('--snplist', default=None)
+    parser.add_argument('--snplist', default=None, help='list of SNPs for list method')
     parser.add_argument('-j', default=1, type=int, help='No of process')
     parser.add_argument('--guidetree', default=None)
+    parser.add_argument('--minfst', type=float, default=0.9, help='min FST for hfst method')
+    parser.add_argument('--logfile', default=None, help='log file output')
     parser = naltparser.init_argparser(parser)
 
     return parser
@@ -58,6 +60,9 @@ class RandomSelector(object):
 
     def log(self, logmsg):
         self.logs.append(logmsg)
+
+    def get_loglines(self):
+        return self.logs
 
 
 class FixSNPSelector(RandomSelector):
@@ -138,11 +143,12 @@ class HierarchicalFSTSelector(RandomSelector):
 
     code = 'hfst'
 
-    def __init__(self, seed=None, guide_tree=None):
+    def __init__(self, seed=None, guide_tree=None, min_fst = 0.9):
         super().__init__(seed)
         if guide_tree is None:
             cexit('[E - HierarchicalFSTSelector requires guide tree]')
         self.guide_tree = guide_tree
+        self.min_fst = min_fst
 
 
     def select(self, haplotypes, groups, haplotest, k=None):
@@ -171,7 +177,11 @@ class HierarchicalFSTSelector(RandomSelector):
             # calculate highest FST
             FST = []
             num, den = allel.hudson_fst(ac1, ac2)
+
+            # NOTE: the line below might produce warning (invalid value in true_divide)
+            # if den == 0, which should be perfectly ok for FST calculation
             fst = num/den
+
             fst[ np.isnan(fst) ] = 0
             sortidx = np.argsort( fst )
 
@@ -181,38 +191,19 @@ class HierarchicalFSTSelector(RandomSelector):
             #cerr('[I - highest FST: %5.4f at %d for pops %s and %s' % (highest_fst_val, highest_fst_pos, pop1, pop2))
 
             # check suitability of SNPs
-            if highest_fst_val.sum() < 0.9 * k:
-                #cerr( '[I - please consider to break (or perform micro analysis of) population %s and %s]' % (pop1, pop2))
+            if highest_fst_val.max() < self.min_fst:
 
-                #mport IPython; IPython.embed()
+                snplist, F = self.select_2(haplotypes1, haplotypes2)
+                if snplist:
+                    self.log('F: %5.4f SNP: %d for pop %s <> %s' % (F, len(snplist), pop1, pop2))
 
-                # 1st approach: find SNPs wwith DT
-
-                X_train = X_test = combined_haplotypes = np.append(haplotypes1, haplotypes2, axis=0)
-                y_train = y_test = combined_groups = np.array( [1] * len(haplotypes1) + [2] * len(haplotypes2) )
-
-                best_score = (-1, None, None, None)
-                for i in range(3):
-
-                    classifier = DecisionTreeClassifier(class_weight='balanced', random_state = self.randomstate)
-                    classifier = classifier.fit(X_train, y_train)
-                    features = classifier.tree_.feature
-
-                    model = FixSNPSelector(features)
-                    lk_predictions, snplist, _ = fit_and_predict(model, X_train, y_train, X_test, k)
-                    scores = lkprof.calculate_scores(y_test,  lk_predictions, len(snplist), 'lk', i)
-
-                    f_score = scores.loc[ scores['REG'] == 'MEDIAN', 'F'].values[0]
-                    if f_score > best_score[0]:
-                        best_score = (f_score, scores, None, snplist.tolist())
-
-                for p in best_score[3]:
-                    candidate_L.append( (p, level, n_pops) )
-                cerr('[I - F: %5.4f SNP: %d for pop %s <> %s]' % (best_score[0], len(best_score[3]), pop1, pop2))
-
-                continue
+                    for p in snplist:
+                        candidate_L.append( (p, level, n_pops) )
+                    continue
 
                 # 2nd approach: find 2 SNPs with highest r^2(st) eg r^2 subpopulation vs r^2 total population
+                else:
+                    self.log('low FST = %5.4f for %s vs %s' % ( highest_fst_val.max(), pop1, pop2))
 
             # append to candidate_L
             for p in highest_fst_pos:
@@ -223,6 +214,41 @@ class HierarchicalFSTSelector(RandomSelector):
 
         # return snp position
         return (L, None)
+
+
+    def select_2(self, haplotypes1, haplotypes2):
+        return None, None
+
+
+class HHFSTDTSelector(HierarchicalFSTSelector):
+
+    def select_2(self, haplotypes1, haplotypes2):
+        """ return (snplist, F):
+            snplist - a list of SNP positions after further selection
+            F = F score for these particular SNP set """
+
+        X_train =  np.append(haplotypes1, haplotypes2, axis=0)
+        y_train =  np.array( [1] * len(haplotypes1) + [2] * len(haplotypes2) )
+
+        best_score = (-1, None, None, None)
+        for i in range(3):
+
+            classifier = DecisionTreeClassifier(class_weight='balanced', random_state = self.randomstate)
+            classifier = classifier.fit(X_train, y_train)
+            features = classifier.tree_.feature
+
+            # remove features with negative position
+            features = features[ features >= 0]
+
+            model = FixSNPSelector(features)
+            lk_predictions, snplist, _ = fit_and_predict(model, X_train, y_train, X_train, len(features))
+            scores = lkprof.calculate_scores(y_train,  lk_predictions, len(features), 'dt', i)
+
+            f_score = scores.loc[ scores['REG'] == 'MEDIAN', 'F'].values[0]
+            if f_score > best_score[0]:
+                best_score = (f_score, scores, None, features.tolist())
+
+        return best_score[3], best_score[0]
 
 
 def prepare_stratified_samples(haplotypes, group_keys, k_fold, haplotype_func=None):
@@ -280,11 +306,12 @@ def init_worker(X, X_shape):
 
 
 def validator_worker( args ):
-    """ validator: returns (r, scores, snplist)
+    """ validator: returns (r, scores, snplist, log)
         where:
             r: repeat identifier
             scores: Panda dataframe containing all scores
             snplist: a dictionary of simid: snplist
+            log: list of log message
     """
 
     model, y, k_list, fold, iteration, r = args
@@ -338,11 +365,14 @@ def validator_worker( args ):
                 results.append( best_score[2] )
             snps[simid][k] = best_score[3]
 
-    return (r, pd.concat( results ), snps)
+    # reformat model log
+    log = [ '[I - {%d} %s]' % (simid, line) for line in model.get_loglines()]
+
+    return (r, pd.concat( results ), snps, log)
 
 
 def validate( model, haplotypes, group_keys, k_list, repeats=10, fold=10, iteration=2, procs=1,
-                with_snp = False):
+                with_snp = False, logfh=None):
 
     results = []
     snp_table = {} if with_snp else None
@@ -364,25 +394,31 @@ def validate( model, haplotypes, group_keys, k_list, repeats=10, fold=10, iterat
 
         with Pool(procs, initializer=init_worker, initargs=(X, X_shape)) as pool:
             c = 0
-            for (n, result, snps) in pool.imap_unordered(validator_worker, arguments):
+            for (n, result, snps, log) in pool.imap_unordered(validator_worker, arguments):
                 c += 1
                 cerr('[I - receiving result from repeat #%d (%d/%d) with %d results]'
                         % (n+1, c, repeats, len(result)))
                 results.append( result )
                 if snp_table is not None:
                     snp_table.update(snps)
+                if logfh and log:
+                    logfh.write( '\n'.join( log ) )
+                    logfh.write( '\n' )
 
     else:
 
         init_worker( haplotypes, None )
         c = 0
-        for (n, result, snps) in map(validator_worker, arguments ):
+        for (n, result, snps, log) in map(validator_worker, arguments ):
             c += 1
             cerr('[I - receiving result from repeat #%d (%d/%d) with %d results]'
                     % (n+1, c, repeats, len(result)))
             results.append( result )
             if snp_table is not None:
                 snp_table.update(snps)
+            if logfh and log:
+                logfh.write( '\n'.join( log ) )
+                logfh.write( '\n' )
 
     return pd.concat( results ), snp_table
 
@@ -390,18 +426,21 @@ def validate( model, haplotypes, group_keys, k_list, repeats=10, fold=10, iterat
 def get_model(args):
 
     if args.method == 'rand':
-        return RandomSelector()
         cerr('[I: running RandomSelector()]')
-    elif args.method == 'dt':
-        return DecisionTreeSelector()
-        cerr('[I: using DecisionTreeSelector()]')
-    elif args.method == 'hfst':
+        return RandomSelector()
 
-        guidetree_file = open(args.guidetree)
-        guidetree = parse_guide_tree(guidetree_file)
-        #import IPython; IPython.embed()
-        #cexit()
-        return HierarchicalFSTSelector( guide_tree = guidetree )
+    elif args.method == 'dt':
+        cerr('[I: using DecisionTreeSelector()]')
+        return DecisionTreeSelector()
+
+    elif args.method == 'hfst':
+        cerr('[I: running HierarchicalFSTSelector()]')
+        return HierarchicalFSTSelector( guide_tree = parse_guide_tree( open(args.guidetree) ) )
+
+    elif args.method == 'hhfstdt':
+        cerr('[I: running HHFSTDTSelector()]')
+        return HHFSTDTSelector( guide_tree = parse_guide_tree( open(args.guidetree) ) )
+
     else:
         cexit('ERR: please provide method')
 
@@ -412,6 +451,8 @@ def simxval(args):
     start_time = time.monotonic()
 
     model = get_model(args)
+
+    logfh = open(args.logfile, 'w') if args.logfile else None
 
     cerr('[I - repeats: %d, k-fold: %d, iteration: %d, k: %s]' % (args.repeats, args.fold, args.iter, args.k))
     cerr('[I - reading input file %s' % args.infile)
@@ -443,15 +484,21 @@ def simxval(args):
     k_list = [ int(x) for x in args.k.split(',') ]
     results, snp_table = validate( model, haplotypes, group_keys, k_list = k_list,
         repeats = args.repeats, fold = args.fold, iteration = args.iter,
-        procs = args.j, with_snp = (args.snplist is not None ))
+        procs = args.j, with_snp = (args.outsnp is not None ), logfh = logfh )
 
     results.to_csv(args.outfile, sep='\t', index=False)
+    cerr('[I - writing scores to %s]' % args.outfile)
+
+    if args.outsnp:
+        import yaml
+        yaml.dump(snp_table, open(args.outsnp, 'w'))
+        cerr('[I - writing SNP table to %s]' % args.outsnp )
+
+    if logfh:
+        cerr('[I - writing log to %s]' % args.logfile)
+
     cerr('[I - finished in %d secs with %d results]'
             % (time.monotonic() - start_time, len(results)))
-    if args.snplist:
-        import yaml
-        yaml.dump(snp_table, open(args.snplist, 'w'))
-    cerr('[I - writing SNP table to %s]' % args.snplist )
 
 
 def main(args):
