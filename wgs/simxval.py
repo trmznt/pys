@@ -244,7 +244,7 @@ class HHFSTDTSelector(HierarchicalFSTSelector):
             lk_predictions, snplist, _ = fit_and_predict(model, X_train, y_train, X_train, len(features))
             scores = lkprof.calculate_scores(y_train,  lk_predictions, len(features), 'dt', i)
 
-            f_score = scores.loc[ scores['REG'] == 'MEDIAN', 'F'].values[0]
+            f_score = scores.loc[ scores['REG'] == 'MIN', 'F'].values[0]
             if f_score > best_score[0]:
                 best_score = (f_score, scores, None, features.tolist())
 
