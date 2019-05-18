@@ -17,7 +17,10 @@ def init_argparser(p=None):
 
     p.add_argument('--indvindex', default=None)
     p.add_argument('--posindex', default=None)
+    p.add_argument('--posline', default=None)
+    p.add_argument('--mac', default=0, type=int)
     p.add_argument('--type', default='ralt')
+    p.add_argument('--autofilename', default=False, action='store_true')
     p.add_argument('-o', '--outfile', default='outfile')
 
     return p
@@ -54,15 +57,30 @@ def ralt2ralt( args ):
 
     if args.posindex:
         pos_indexes = np.loadtxt(args.posindex, dtype=int)
+        cerr('[I - filtering for %d SNP position]' % len(pos_indexes))
         whole_region.filter_positions(pos_indexes)
+    elif args.posline:
+        with open(args.posline) as f_posline:
+            poslines = [ x.split() for x in f_posline ]
+            if poslines[0][0] == 'CHROM' and poslines[0][1] == 'POS':
+                del poslines[0]
+        whole_region.filter_poslines(poslines, inplace=True)
 
     if args.indvindex:
         indv_indexes = np.loadtxt(args.indvindex, dtype=int)
         whole_region.filter_samples(indv_indexes)
         samples = samples[indv_indexes]
 
+    if args.mac > 0:
+        whole_region.filter_mac(args.mac)
+
     # save to outfile
 
+    if args.autofilename:
+        args.outfile = '%s-%d-%d' % (
+                'r' if args.type == 'ralt' else 'n',
+                len(samples), len(whole_region.M)
+        )
     outmatrix = args.outfile + ('.ralt.txt' if args.type == 'ralt' else '.nalt.txt')
     outpos = args.outfile + '.pos.txt'
 
