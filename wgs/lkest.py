@@ -341,6 +341,15 @@ def validator_worker( args ):
         cerr('[I - pid %d: validator_worker() is mapping numpy array]' % pid)
         X = np.frombuffer(var_dict['X'], dtype=np.int8).reshape(var_dict['X_shape'])
 
+
+    if fold == 0:
+        # no cross-validation
+
+        X_train = X_test = X
+        y_train = y_test - y
+
+        return (simid, pd.concat( results ), snps, log)
+
     # check for sample size suitability for k-folding
     X, y = prepare_stratified_samples( X, y, fold )
 
@@ -547,8 +556,44 @@ def simulate(args):
         cerr('[I - writing log to %s]' % args.logfile)
 
 
+def full_train(model, haplotypes, group_keys, iteration):
+
+    """ return (matrix_profiles, snp_list) """
+
+    X_train = X_test = haplotypes
+    y_train = y_test = group_keys
+    best_score = (-1, None, None, None)
+
+    for i in range(iteration):
+        # the iteration here is used for stochastic models where each iteration can yield
+        # different result
+        lk_predictions, snplist, orig_predictions = fit_and_predict(model, X_train, y_train, X_test, k)
+        scores = lkprof.calculate_scores(y_test,  lk_predictions, len(snplist), model='lk'
+                    , selector=model.code, iter = i)
+        if orig_predictions is not None:
+            orig_scores = lkprof.calculate_scores(y_test, orig_predictions
+                    , len(snplist), model=model.code, selector=model.code, iter = i)
+        else:
+            orig_scores = None
+
+        f_min = scores.loc[ scores['REG'] == 'MIN', 'F'].values[0]
+        f_mean = scores.loc[ scores['REG'] == 'MEAN', 'F'].values[0]
+        f_score = 2 * f_min * f_mean / (f_min + f_mean)
+        if f_score > best_score[0]:
+            best_score = (f_score, scores, orig_scores, snplist.tolist())
+
+    results.append( best_score[1] )
+    if best_score[2] is not None:
+        results.append( best_score[2] )
+    snps['%d/%d/%d/%d' % (simid, k_fold, k, len(best_score[3]))] = best_score[3]
+
+    # reformat model log
+    log = [ '[I - {%d} %s]' % (simid, line) for line in model.get_loglines()]
+
 def train(args):
 
+    model = get_model(args)
+    cerr('[I - train model: %s iteration: %d')
     nalt_parser = naltparser.NAltLineParser( args, dataype='nalt')
 
     # we need group info
@@ -561,6 +606,9 @@ def train(args):
     haplotypes = region.haplotypes()
 
     matrix_profiles = cross_train( haplotypes, group_keys, repeats, fold, )
+
+
+
 
 def predict(args):
 
