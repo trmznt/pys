@@ -67,9 +67,9 @@ class RandomSelector(object):
         self.randomstate = np.random.RandomState(seed)
 
     def select(self, haplotypes, groups, haplotest, k):
-        """ return (index list of selected SNPs, prediction result) """
+        """ return (index list of selected SNPs, prediction result, other_params) """
 
-        return (self.randomstate.randint(0, len(haplotypes[0]), k), None)
+        return (self.randomstate.randint(0, len(haplotypes[0]), k), None, None)
 
     def log(self, logmsg):
         self.logs.append(logmsg)
@@ -88,7 +88,7 @@ class FixSNPSelector(RandomSelector):
         super().__init__()
 
     def select(self, haplotypes, groups, haplotest, k=None):
-        return (self.L, None)
+        return (self.L, None, None)
 
 
 class DecisionTreeSelector(RandomSelector):
@@ -104,9 +104,10 @@ class DecisionTreeSelector(RandomSelector):
                         random_state = self.randomstate)
         classifier = classifier.fit(haplotypes, groups)
         features = classifier.tree_.feature
+        d = { 'MAX_DEPTH': classifier.tree_.max_depth }
 
         return (np.unique(np.delete(features, np.where(features == -2))),
-                    classifier.predict(haplotest))
+                    classifier.predict(haplotest), d)
 
 
 def parse_guide_tree( treefile ):
@@ -306,7 +307,7 @@ def fit_and_predict(model, X_train, y_train, X_test, k):
     """
 
     # select SNPs based on model
-    L, orig_predictions = model.select(X_train, y_train, X_test, k)
+    L, orig_predictions, params = model.select(X_train, y_train, X_test, k)
     X_train_0 = X_train[:,L]
     X_test_0 = X_test[:,L]
 
@@ -314,7 +315,7 @@ def fit_and_predict(model, X_train, y_train, X_test, k):
 
     lkp = lkprof.LikelihoodProfile()
     lkp.fit(X_train_0, y_train)
-    return lkp.predict(X_test_0), L, orig_predictions
+    return lkp.predict(X_test_0), L, orig_predictions, params
 
 
 def validator_worker( args ):
@@ -341,23 +342,53 @@ def validator_worker( args ):
         cerr('[I - pid %d: validator_worker() is mapping numpy array]' % pid)
         X = np.frombuffer(var_dict['X'], dtype=np.int8).reshape(var_dict['X_shape'])
 
+    results = []
+    snps = {}
+    k_fold = -1
 
-    if fold == 0:
+    if fold <= 0:
         # no cross-validation
 
         X_train = X_test = X
-        y_train = y_test - y
+        y_train = y_test = y
+
+        for k in k_list:
+
+            # best score will be based on highest min F score
+            best_score = (-1, None, None, None)
+            for i in range(iteration):
+                # the iteration here is used for stochastic models where each iteration can yield
+                # different result
+                lk_predictions, snplist, orig_predictions, params = fit_and_predict(model, X_train, y_train, X_test, k)
+                scores = lkprof.calculate_scores(y_test,  lk_predictions
+                    , k = len(snplist), _k = k, EST = 'lk', SELECTOR = model.code, SIMID = simid
+                    , FOLD = k_fold, **params)
+                if orig_predictions is not None:
+                    orig_scores = lkprof.calculate_scores(y_test, orig_predictions
+                            , k = len(snplist), _k = k, EST = model.code, SELECTOR = model.code, SIMID = simid
+                            , FOLD = k_fold, **params)
+                else:
+                    orig_scores = None
+
+                f_score = scores.loc[ scores['REG'] == 'MIN', 'F'].values[0]
+                if f_score > best_score[0]:
+                    best_score = (f_score, scores, orig_scores, snplist.tolist())
+
+            results.append( best_score[1] )
+            if best_score[2] is not None:
+                results.append( best_score[2] )
+            snps['%d/%d/%d/%d' % (simid, k_fold, k, len(best_score[3]))] = best_score[3]
+
+        # reformat model log
+        log = [ '[I - {%d} %s]' % (simid, line) for line in model.get_loglines()]
 
         return (simid, pd.concat( results ), snps, log)
+
 
     # check for sample size suitability for k-folding
     X, y = prepare_stratified_samples( X, y, fold )
 
     skf = StratifiedKFold(n_splits = fold, shuffle=True, random_state = np.random.randint(1e8))
-
-    results = []
-    snps = {}
-    k_fold = -1
 
     for train_index, test_index in skf.split(X, y):
         X_train, X_test = X[train_index], X[test_index]
@@ -371,7 +402,7 @@ def validator_worker( args ):
             for i in range(iteration):
                 # the iteration here is used for stochastic models where each iteration can yield
                 # different result
-                lk_predictions, snplist, orig_predictions = fit_and_predict(model, X_train, y_train, X_test, k)
+                lk_predictions, snplist, orig_predictions, params = fit_and_predict(model, X_train, y_train, X_test, k)
                 scores = lkprof.calculate_scores(y_test,  lk_predictions, len(snplist), k, 'lk', simid, k_fold)
                 if orig_predictions is not None:
                     orig_scores = lkprof.calculate_scores(y_test, orig_predictions
@@ -452,15 +483,15 @@ def validate( model, haplotypes, group_keys, k_list, repeats, fold, iteration
             # write to temporary files
             if outfile:
                 with open('%s.%d' % (outfile, n), 'wb') as fout:
-                    pickle.dump(result, pickle.HIGHEST_PROTOCOL)
+                    pickle.dump(result, fout, pickle.HIGHEST_PROTOCOL)
             if outsnp:
                 with open('%s.%d' % (outsnp, n), 'wb') as fout:
-                    pickle.dump(snps, pickle.HIGHEST_PROTOCOL)
+                    pickle.dump(snps, fout, pickle.HIGHEST_PROTOCOL)
 
             # write to log
-            if logfh and log:
-                logfh.write( '\n'.join( log ) )
-                logfh.write( '\n' )
+            if logf and log:
+                logf.write( '\n'.join( log ) )
+                logf.write( '\n' )
 
     cerr('[I - combining output files]')
     results = []
@@ -640,7 +671,7 @@ def lkest(args, config=None):
     start_time = time.monotonic()
     func(args)
     cerr('[I - finished in %6.2f minute(s) at %s]'
-            % (time.monotonic() - start_time, datetime.datetime.now()))
+            % ((time.monotonic() - start_time)/60, datetime.datetime.now()))
 
 
 
