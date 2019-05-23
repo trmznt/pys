@@ -30,9 +30,10 @@ def init_argparser():
     parser.add_argument('--iter', default=5, type=int, help='iteration per fold')
     parser.add_argument('--repeats', default=20, type=int, help='n repeats of fold')
     parser.add_argument('--fold', default=10, type=int)
+    parser.add_argument('--mac', default=0, type=int)
     parser.add_argument('-o', '--outfile', default='out.accuracy.dt.txt')
     parser.add_argument('--outsnp', default=None)
-    parser.add_argument('--snplist', default=None, help='list of SNPs for list method')
+    parser.add_argument('--snpfile', default=None, help='file containing list of SNPs for list method')
     parser.add_argument('-j', default=1, type=int, help='No of process')
     parser.add_argument('--guidetree', default=None)
     parser.add_argument('--minfst', type=float, default=0.9, help='min FST for hfst method')
@@ -67,8 +68,12 @@ class RandomSelector(object):
 
 class FixSNPSelector(RandomSelector):
 
-    def __init__(self, L):
-        self.L = L
+    def __init__(self, L=None, snpfile=None):
+        if L is not None:
+            self.L = L
+        elif snpfile:
+            self.L = np.array( [ int(x) for x in open(snpfile).read().split('\n')] )
+        super().__init__()
 
     def select(self, haplotypes, groups, haplotest, k=None):
         return (self.L, None)
@@ -88,7 +93,8 @@ class DecisionTreeSelector(RandomSelector):
         classifier = classifier.fit(haplotypes, groups)
         features = classifier.tree_.feature
 
-        return (np.delete(features, np.where(features == -2)), classifier.predict(haplotest))
+        return (np.unique(np.delete(features, np.where(features == -2))),
+                    classifier.predict(haplotest))
 
 
 def parse_guide_tree( treefile ):
@@ -237,8 +243,8 @@ class HHFSTDTSelector(HierarchicalFSTSelector):
             classifier = classifier.fit(X_train, y_train)
             features = classifier.tree_.feature
 
-            # remove features with negative position
-            features = features[ features >= 0]
+            # remove features with negative position and redundant
+            features = np.unique(features[ features >= 0])
 
             model = FixSNPSelector(features)
             lk_predictions, snplist, _ = fit_and_predict(model, X_train, y_train, X_train, len(features))
@@ -319,7 +325,9 @@ def validator_worker( args ):
 
     cerr('[I - pid %d: validator_worker() started]' % pid)
 
-    model.reseed( r * pid * np.random.randint(0,10))
+    seed = r * pid * np.random.randint(1e1)
+    np.random.seed( seed + 1)
+    model.reseed( seed )
 
     if var_dict['X_shape'] == None:
         X = var_dict['X']
@@ -330,7 +338,7 @@ def validator_worker( args ):
     # check for sample size suitability for k-folding
     X, y = prepare_stratified_samples( X, y, fold )
 
-    skf = StratifiedKFold(n_splits = fold, shuffle=True, random_state = r * pid)
+    skf = StratifiedKFold(n_splits = fold, shuffle=True, random_state = np.random.randint(1e8))
 
     results = []
     snps = {}
@@ -344,26 +352,26 @@ def validator_worker( args ):
 
         for k in k_list:
 
-            # best score will be based on highest F score
-            best_score = (-1, None, None)
+            # best score will be based on highest min F score
+            best_score = (-1, None, None, None)
             for i in range(iteration):
                 # the iteration here is used for stochastic models where each iteration can yield
                 # different result
                 lk_predictions, snplist, orig_predictions = fit_and_predict(model, X_train, y_train, X_test, k)
-                scores = lkprof.calculate_scores(y_test,  lk_predictions, len(snplist), 'lk', simid)
+                scores = lkprof.calculate_scores(y_test,  lk_predictions, len(snplist), k, 'lk', simid)
                 if orig_predictions is not None:
-                    orig_scores = lkprof.calculate_scores(y_test, orig_predictions, len(snplist), model.code, simid)
+                    orig_scores = lkprof.calculate_scores(y_test, orig_predictions, len(snplist), k, model.code, simid)
                 else:
                     orig_scores = None
 
-                f_score = scores.loc[ scores['REG'] == 'MEDIAN', 'F'].values[0]
+                f_score = scores.loc[ scores['REG'] == 'MIN', 'F'].values[0]
                 if f_score > best_score[0]:
                     best_score = (f_score, scores, orig_scores, snplist.tolist())
 
             results.append( best_score[1] )
             if best_score[2] is not None:
                 results.append( best_score[2] )
-            snps[simid][k] = best_score[3]
+            snps[simid]['%d/%d' % (len(best_score[3]),k)] = best_score[3]
 
     # reformat model log
     log = [ '[I - {%d} %s]' % (simid, line) for line in model.get_loglines()]
@@ -441,6 +449,10 @@ def get_model(args):
         cerr('[I: running HHFSTDTSelector()]')
         return HHFSTDTSelector( guide_tree = parse_guide_tree( open(args.guidetree) ) )
 
+    elif args.method == 'list':
+        cerr('[I: running FixSNPSelector()]')
+        return FixSNPSelector(snpfile = args.snpfile)
+
     else:
         cexit('ERR: please provide method')
 
@@ -455,7 +467,6 @@ def simxval(args):
     logfh = open(args.logfile, 'w') if args.logfile else None
 
     cerr('[I - repeats: %d, k-fold: %d, iteration: %d, k: %s]' % (args.repeats, args.fold, args.iter, args.k))
-    cerr('[I - reading input file %s' % args.infile)
 
     nalt_parser = naltparser.NAltLineParser( args, datatype='nalt')
 
@@ -477,6 +488,10 @@ def simxval(args):
 
     cerr('[I - masking to %d samples]' % len(samples))
     region = nalt_parser.parse_whole(mask=mask)
+
+    if args.mac > 0:
+        cerr('[I - filtering for MAC = %d]' % args.mac)
+        region.filter_mac(args.mac, inplace=True)
 
     cerr('[I - preparing haplotypes]')
     haplotypes = region.haplotypes()
