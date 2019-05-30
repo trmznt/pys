@@ -69,7 +69,7 @@ class RandomSelector(object):
     def select(self, haplotypes, groups, haplotest, k):
         """ return (index list of selected SNPs, prediction result, other_params) """
 
-        return (self.randomstate.randint(0, len(haplotypes[0]), k), None, None)
+        return (self.randomstate.randint(0, len(haplotypes[0]), k), None, {})
 
     def log(self, logmsg):
         self.logs.append(logmsg)
@@ -88,20 +88,26 @@ class FixSNPSelector(RandomSelector):
         super().__init__()
 
     def select(self, haplotypes, groups, haplotest, k=None):
-        return (self.L, None, None)
+        return (self.L, None, {})
 
 
 class DecisionTreeSelector(RandomSelector):
 
     code = 'dt'
 
+    def __init__(self, max_depth=None, min_samples_leaf=2):
+        self.max_depth = max_depth
+        self.min_samples_leaf = min_samples_leaf
+        super().__init__()
+
     def select(self, haplotypes, groups, haplotest, k=None):
 
         if k <= 0:
             k = None
 
-        classifier = DecisionTreeClassifier(class_weight='balanced', max_features=k,
-                        random_state = self.randomstate)
+        classifier = DecisionTreeClassifier(class_weight='balanced', max_features=k
+                , random_state = self.randomstate, max_depth = self.max_depth
+                , min_samples_leaf = self.min_samples_leaf)
         classifier = classifier.fit(haplotypes, groups)
         features = classifier.tree_.feature
         d = { 'MAX_DEPTH': classifier.tree_.max_depth }
@@ -184,10 +190,12 @@ class HierarchicalFSTSelector(RandomSelector):
             haplotypes1 = haplotypes[ np.isin(groups, pop1) ]
             haplotypes2 = haplotypes[ np.isin(groups, pop2) ]
 
-            if len(haplotypes1) < 5:
-                cerr('[I - insufficient population size for %s]' % pop1)
-            if len(haplotypes2) < 5:
-                cerr('[I - insufficient population size for %s]' % pop2)
+            if len(haplotypes1) < 4:
+                cerr('[I - insufficient population size for %s -> %d]' %
+                    (pop1, len(haplotypes)) )
+            if len(haplotypes2) < 4:
+                cerr('[I - insufficient population size for %s -> %d]' %
+                    (pop2, len(haplotypes)) )
 
             # convert haplotypes to allele counts
             ac1 = count_allele(haplotypes1)
@@ -232,7 +240,7 @@ class HierarchicalFSTSelector(RandomSelector):
         L = np.unique( np.array( sorted( [ x[0] for x in candidate_L] ) ) )
 
         # return snp position
-        return (L, None)
+        return (L, None, {})
 
 
     def select_2(self, haplotypes1, haplotypes2):
@@ -254,7 +262,7 @@ class HHFSTDTSelector(HierarchicalFSTSelector):
         best_score = (-1, None, None, None)
         for i in range(3):
 
-            classifier = DecisionTreeClassifier(class_weight='balanced', random_state = self.randomstate)
+            classifier = DecisionTreeClassifier(class_weight='balanced', random_state = self.randomstate, min_samples_leaf=2)
             classifier = classifier.fit(X_train, y_train)
             features = classifier.tree_.feature
 
@@ -262,8 +270,8 @@ class HHFSTDTSelector(HierarchicalFSTSelector):
             features = np.unique(features[ features >= 0])
 
             model = FixSNPSelector(features)
-            lk_predictions, snplist, _ = fit_and_predict(model, X_train, y_train, X_train, len(features))
-            scores = lkprof.calculate_scores(y_train,  lk_predictions, len(features), 'dt', i)
+            lk_predictions, snplist, _, params = fit_and_predict(model, X_train, y_train, X_train, len(features))
+            scores = lkprof.calculate_scores(y_train,  lk_predictions)
 
             f_score = scores.loc[ scores['REG'] == 'MIN', 'F'].values[0]
             if f_score > best_score[0]:
