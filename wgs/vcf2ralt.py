@@ -17,6 +17,7 @@ from seqpy.core.cfuncs import genoutils
 
 def init_argparser():
     p = arg_parser("Convert VCF to ratio of alternate ref dataset")
+    p.add_argument('--autofilename', default=False, action='store_true')
     p.add_argument('-o', '--outfile', default='outdata')
     p.add_argument('infile')
 
@@ -37,6 +38,11 @@ def vcf2ralt( args ):
                 'variants/SNPEFF_AMINO_ACID_CHANGE', 'calldata/AD'])
     cerr('[I: read %s site, %s samples in %d secs]' % (len(vcfset['variants/CHROM']),
          len(vcfset['samples']), time.monotonic() - start_time))
+
+    if args.autofilename:
+        args.outfile = 'r-%d-%d' % (
+                len(vcfset['samples']), len(vcfset['variants/POS'])
+        )
 
     pos_file = args.outfile + '.pos.txt'
     geno_file = args.outfile + '.ralt.txt'
