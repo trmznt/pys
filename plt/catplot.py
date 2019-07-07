@@ -15,7 +15,9 @@ def init_argparser():
     parser.add_argument('--method', default='')
     parser.add_argument('--region', default=None)
     parser.add_argument('--hue', default='k')
+    parser.add_argument('--row', default=None)
     parser.add_argument('--aspect', type=int, default=3)
+    parser.add_argument('--height', type=float, default=-1)
     parser.add_argument('--order', default=None, help="File containing order of x axis")
     parser.add_argument('--outplot', default='outplot.pdf')
     parser.add_argument('infile', nargs='+')
@@ -31,7 +33,7 @@ def drop_dataframe(dataframe, variables, regions=None):
     #        continue
     #    dataframe.drop(columns=column, inplace=True)
 
-    df = dataframe[ variables + ['REG', 'k'] ]
+    df = dataframe[ variables + ['REG'] ]
 
     if regions is not None:
         df = df[df['REG'].isin(regions)]
@@ -42,9 +44,8 @@ def drop_dataframe(dataframe, variables, regions=None):
 def calculate_required_aspect(data):
     total_width = 1.37 * len(data['REG'].unique())
     total_height = total_width / 1.42 / 2 # bad approximation of square root of 2
-    print('Using figure size: {:.2f} x {:.2f} inches'.format(
-              total_height, total_width),
-          file=sys.stderr)
+    cerr('[I - Using figure size: {:.2f} x {:.2f} inches]'.format(
+              total_height, total_width))
 
     return total_width, total_height
 
@@ -82,7 +83,8 @@ def plot_accuracies(args):
     # parse variables & regions
 
     variables = args.variables.split(',') + [ args.hue ]
-    print(variables)
+    if args.row:
+        variables += [ args.row ]
 
     if args.region:
         regions = args.region.split(',')
@@ -94,15 +96,22 @@ def plot_accuracies(args):
     else:
         order = None
 
-    data = drop_dataframe(data, variables, regions).melt(['REG', 'k', args.hue])
+    melted = ['REG', args.hue]
+    if args.row: melted += [ args.row ]
+    cerr('[I - melted variables: %s' % melted)
+    data = drop_dataframe(data, variables, regions).melt(melted)
 
     sns.set_palette('Paired')
 
     if regions is None:
-        width, height = calculate_required_aspect(data)
-        plots = sns.catplot(x='REG', y='value', data=data, hue=args.hue, row='variable',
+        if args.height > 0:
+            height = args.height
+        else:
+            width, height = calculate_required_aspect(data)
+        row = args.row if args.row else 'variable'
+        plots = sns.catplot(x='REG', y='value', data=data, hue=args.hue, row=row,
                             kind='box', sharex=True, height=height, aspect=args.aspect,
-                            order=order, showfliers=False, legend_out=True)
+                            order=order, showfliers=False, legend_out=True, linewidth=1)
     else:
         plots = sns.catplot(x='REG', y='value', data=data, hue=args.hue, row='variable',
                             kind='box', sharex=True)
@@ -114,7 +123,7 @@ def plot_accuracies(args):
         axis.set_ylabel(title, fontsize='x-large')
 
     # rotate x ticks
-    [ (x.set_rotation(60), x.set_fontsize( x.get_fontsize() * 2)) for x in plots.axes[-1][0].get_xticklabels() ]
+    [ (x.set_rotation(60), x.set_fontsize( x.get_fontsize() * 1.5)) for x in plots.axes[-1][0].get_xticklabels() ]
     plots.axes[-1][0].set_xlabel('')
 
     fig = plots.fig
