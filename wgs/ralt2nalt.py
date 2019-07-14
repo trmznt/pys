@@ -32,11 +32,13 @@ def main(args):
 
 def ralt2nalt( args ):
 
-    ralt_parser = naltparser.NAltLineParser( args, datatype='ralt')
+    ralt_parser = naltparser.NAltLineParser( args, datatype='ralt'
+        , with_group=False, with_position=False)
 
     region = ralt_parser.parse_whole()
 
     # convert to n_alt
+    cerr('[I - converting to nalt format]')
     region.ralt_to_nalt(hetratio = args.hetratio if not args.major else -1)
 
     # write to outfile
