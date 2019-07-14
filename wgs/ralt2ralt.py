@@ -18,9 +18,11 @@ def init_argparser(p=None):
     p.add_argument('--indvindex', default=None)
     p.add_argument('--posindex', default=None)
     p.add_argument('--posline', default=None)
+    p.add_argument('--excludesample', default=None)
     p.add_argument('--mac', default=0, type=int)
     p.add_argument('--type', default='ralt')
     p.add_argument('--autofilename', default=False, action='store_true')
+    p.add_argument('--outfmt', default='text', choices=['text', 'pickle'])
     p.add_argument('-o', '--outfile', default='outfile')
 
     return p
@@ -32,7 +34,9 @@ def main( args ):
 
 
 def read_data( args ):
-    """ return M, sample_idx, site_idx """
+    """ Note: this function is no longer used;
+        return M, sample_idx, site_idx
+    """
     df = pd.read_csv(args.infile, sep='\t',
             dtype=float if args.type=='ralt' else int)
     samples = df.columns
@@ -71,6 +75,15 @@ def ralt2ralt( args ):
         whole_region.filter_samples(indv_indexes)
         samples = samples[indv_indexes]
 
+    if args.excludesample:
+        excluded_samples = np.loadtxt(args.excludesample, dtype=str)
+        excluded_indexes = np.where(np.array(samples) == excluded_samples[:,None])[1]
+        indv_indexes = np.array( list(set( range(len(samples))) - set(excluded_indexes)) )
+        cerr('[I - excluding %d samples]' % len(excluded_indexes))
+        whole_region.filter_samples(indv_indexes)
+        samples = samples[indv_indexes]
+
+
     if args.mac > 0:
         whole_region.filter_mac(args.mac)
 
@@ -81,10 +94,17 @@ def ralt2ralt( args ):
                 'r' if args.type == 'ralt' else 'n',
                 len(samples), len(whole_region.M)
         )
-    outmatrix = args.outfile + ('.ralt.txt' if args.type == 'ralt' else '.nalt.txt')
-    outpos = args.outfile + '.pos.txt'
 
-    whole_region.df_M.to_csv(outmatrix, sep='\t', index=False)
+    cerr('[I - writing to outfiles]')
+    outmatrix = args.outfile + ('.ralt' if args.type == 'ralt' else '.nalt')
+    if args.outfmt == 'pickle':
+        outmatrix = outmatrix + '.pickle.gz'
+        whole_region.df_M.to_pickle(outmatrix)
+    else:
+        outmatrix = outmatrix + '.txt.gz'
+        whole_region.df_M.to_csv(outmatrix, sep='\t', index=False)
+
+    outpos = args.outfile + '.pos.txt.gz'
     whole_region.df_P.to_csv(outpos, sep='\t', index=False)
     cerr('[I - writing to file: %s and %s' % (outmatrix, outpos))
 
