@@ -2,6 +2,7 @@
 
 from seqpy import cout, cerr, cexit, gzopen
 from seqpy.cmds import arg_parser
+from seqpy.core.bioio import naltparser
 
 import numpy as np
 import pandas as pd
@@ -13,13 +14,13 @@ def init_argparser(p=None):
     if not p:
         p = arg_parser("ralt2allqc - checking exhaustively")
 
+    p = naltparser.init_argparser(p, with_group=False, with_position=False)
+
     p.add_argument('--mac', type=int, default=1, help="Minor Allele Count")
     p.add_argument('--miss', type=float, default=1.0, help='Missingness fraction threshold')
     p.add_argument('-k', type=int, default=-1, help='start from individual/samples no K')
-    p.add_argument('-n', type=int, default=-1, help='only read the first N row from infile')
     p.add_argument('-o', '--outfile', default='out.exhqc.txt')
-    p.add_argument('-s', type=int, default=-1)
-    p.add_argument('infile')
+    p.add_argument('-s', type=int, default=-1, help='no of sample to be exported')
 
     return p
 
@@ -118,7 +119,7 @@ def filter_lmiss(M, site_idx, sample_idx, lmiss):
 
     M2 = M[ indexes[0], : ]
     site_idx2 = site_idx[ indexes[0] ]
-    cerr('[I - keeping %d from %d sites]' % (len(site_idx2), len(site_idx)))
+    cerr('[I - missingness filter kept  %d from %d sites]' % (len(site_idx2), len(site_idx)))
     #import IPython; IPython.embed()
 
     return M2, site_idx2, sample_idx
@@ -135,13 +136,13 @@ def filter_mac(M, site_idx, sample_idx, mac):
 
     M2 = M[indexes[0], :]
     site_idx2 = site_idx[ indexes[0] ]
-    cerr('[I - keeping %d from %d sites]' % (len(site_idx2), len(site_idx)))
+    cerr('[I - MAC filter kept %d from %d sites]' % (len(site_idx2), len(site_idx)))
     #import IPython; IPython.embed()
 
     return M2, site_idx2, sample_idx
 
 
-def read_data( args ):
+def read_data_xxx( args ):
     """ return M, sample_idx, site_idx """
     df = pd.read_csv(args.infile, sep='\t', dtype=float,
             nrows=args.n if args.n > 0 else None)
@@ -151,4 +152,11 @@ def read_data( args ):
     site_idx = np.arange(len(M))
 
     return M, sample_idx, site_idx
+
+
+def read_data( args ):
+
+    nalt_parser = naltparser.NAltLineParser( args, with_group=False, with_position=False)
+    region = nalt_parser.parse_whole()
+    return region.M, np.arange(len(region.M[0])), np.arange(len(region.M))
 
