@@ -36,7 +36,7 @@ parser <- OptionParser(usage = "%prog [options] distance",
                        option_list = option.list)
 args <- parse_args(parser, positional_arguments = 1)
 
-distance <- as.dist(read.delim(args$args))
+distance <- as.dist(read.delim(args$args, check.names=F))
 if (args$options$method == "upgma") {
   phylo <- as.phylo(hclust(distance, method = "average"))
 } else {
