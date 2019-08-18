@@ -88,6 +88,8 @@ def ralt2ralt( args ):
         whole_region.filter_mac(args.mac)
 
     # save to outfile
+    whole_region.save(args.outfmt, args.outfile, args.autofilename, with_position = True)
+    return
 
     if args.autofilename:
         args.outfile = '%s-%d-%d' % (
