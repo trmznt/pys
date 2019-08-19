@@ -19,10 +19,11 @@ def init_argparser(p=None):
     p.add_argument('--posindex', default=None)
     p.add_argument('--posline', default=None)
     p.add_argument('--excludesample', default=None)
+    p.add_argument('--includesample', default=None)
     p.add_argument('--mac', default=0, type=int)
     p.add_argument('--type', default='ralt')
     p.add_argument('--autofilename', default=False, action='store_true')
-    p.add_argument('--outfmt', default='text', choices=['text', 'pickle'])
+    p.add_argument('--outfmt', default='text', choices=['text', 'pickle', 'npy'])
     p.add_argument('-o', '--outfile', default='outfile')
 
     return p
@@ -83,13 +84,22 @@ def ralt2ralt( args ):
         whole_region.filter_samples(indv_indexes)
         samples = samples[indv_indexes]
 
+    if args.includesample:
+        included_samples = np.loadtxt(args.includesample, dtype=str)
+        included_indexes = np.where(np.array(samples) == included_samples[:,None])[1]
+        cerr('[I - including {} | {} out of {} samples]'.format(
+            len(included_samples), len(included_indexes), len(samples)))
+        whole_region.filter_samples(included_indexes)
+        samples = samples[included_indexes]
 
     if args.mac > 0:
         whole_region.filter_mac(args.mac)
 
     # save to outfile
-    whole_region.save(args.outfmt, args.outfile, args.autofilename, with_position = True)
+    whole_region.save(args.outfmt, prefixname=args.outfile, autofilename=args.autofilename
+            , with_position=True)
     return
+
 
     if args.autofilename:
         args.outfile = '%s-%d-%d' % (
