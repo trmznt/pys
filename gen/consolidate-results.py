@@ -16,6 +16,7 @@ def init_argparser(p=None):
     p = grpparser.init_argparser(p)
     p.add_argument('--fmt', default='text', choices=['pickle', 'npy', 'text', 'list'])
     p.add_argument('--samplefile', default='')
+    p.add_argument('--threshold', type=int, default=100)
     p.add_argument('infile')
     return p
 
@@ -51,10 +52,10 @@ def consolidate_predictions( args ):
             for i in range(len(group_indexes)):
                 predicted_group = df.columns[group_indexes[i]]
                 prediction_score = df.values[i, group_indexes[i]]
-                if prediction_score < 100 or predicted_group != group_keys[i]:
+                if prediction_score < args.threshold or predicted_group != group_keys[i]:
                     cout('{}: {} -> {} ({})'.format(samples[i], group_keys[i], predicted_group, prediction_score))
 
-        
+
 
 def read_samplefile( infile, fmt ):
 
