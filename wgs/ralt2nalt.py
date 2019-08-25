@@ -20,9 +20,11 @@ def init_argparser():
                     help = "set all caling to major allele")
     p.add_argument('--missingtohet', action = 'store_true',
                     help = "set missing as heterozygosity")
+    p.add_argument('--outfmt', default='npy', choices=['npy', 'pickle', 'tab'])
+    p.add_argument('--autofilename', default=True, action='store_true')
     # option to treat all missing as hets
 
-    p = naltparser.init_argparser(p)
+    p = naltparser.init_argparser(p, with_group=False, with_position=False)
 
     return p
 
@@ -39,7 +41,13 @@ def ralt2nalt( args ):
 
     # convert to n_alt
     cerr('[I - converting to nalt format]')
+    cerr( '[ M dtype: {}]'.format(region.M.dtype) )
     region.ralt_to_nalt(hetratio = args.hetratio if not args.major else -1)
+    cerr('[ M dtype: {}]'.format(region.M.dtype) )
+
+    region.save(args.outfmt, prefixname=args.outfile, autofilename=args.autofilename
+            , with_position=False)
+    return
 
     # write to outfile
     with open(args.outfile, 'w') as outfile:
