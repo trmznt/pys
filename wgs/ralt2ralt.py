@@ -17,7 +17,7 @@ def init_argparser(p=None):
 
     p.add_argument('--indvindex', default=None)
     p.add_argument('--posindex', default=None)
-    p.add_argument('--posline', default=None)
+    p.add_argument('--includepos', default=None)
     p.add_argument('--excludesample', default=None)
     p.add_argument('--includesample', default=None)
     p.add_argument('--mac', default=0, type=int)
@@ -64,8 +64,8 @@ def ralt2ralt( args ):
         pos_indexes = np.loadtxt(args.posindex, dtype=int)
         cerr('[I - filtering for %d SNP position]' % len(pos_indexes))
         whole_region.filter_positions(pos_indexes)
-    elif args.posline:
-        with open(args.posline) as f_posline:
+    elif args.includepos:
+        with open(args.includepos) as f_posline:
             poslines = [ x.split() for x in f_posline ]
             if poslines[0][0] == 'CHROM' and poslines[0][1] == 'POS':
                 del poslines[0]
