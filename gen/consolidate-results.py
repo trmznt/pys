@@ -3,6 +3,7 @@
 from seqpy import cout, cerr, cexit, gzopen
 from seqpy.cmds import arg_parser
 from seqpy.core.bioio import grpparser
+from seqpy.
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,7 @@ def init_argparser(p=None):
     p.add_argument('--fmt', default='text', choices=['pickle', 'npy', 'text', 'list'])
     p.add_argument('--samplefile', default='')
     p.add_argument('--threshold', type=int, default=100)
+    p.add_argument('--outreport', default='')
     p.add_argument('infile')
     return p
 
@@ -40,6 +42,11 @@ def consolidate_predictions( args ):
     with open(args.infile, 'rb') as f:
         predictions = pickle.load(f)
 
+    if args.outscore:
+        outreport = open(args.outscore, 'rb')
+    reports = []
+
+
     for model in predictions:
         model_pred = predictions[model]
 
@@ -49,11 +56,27 @@ def consolidate_predictions( args ):
             df = generate_dataframe( model_pred[k])
 
             group_indexes = np.argmax(df.values, axis=1)
+            group_predictions = df.columns[ group_indexes[:,None] ]
             for i in range(len(group_indexes)):
                 predicted_group = df.columns[group_indexes[i]]
-                prediction_score = df.values[i, group_indexes[i]]
-                if prediction_score < args.threshold or predicted_group != group_keys[i]:
-                    cout('{}: {} -> {} ({})'.format(samples[i], group_keys[i], predicted_group, prediction_score))
+                prediction_confidence = df.values[i, group_indexes[i]]
+                if prediction_confidence < args.threshold or predicted_group != group_keys[i]:
+                    cout('{}: {} -> {} ({})'.format(samples[i], group_keys[i], predicted_group, prediction_confidence))
+
+            score = lkmodels.calculate_score(group_keys, group_predictions)
+            confmat = confusion_matrix(group_keys, group_predictions)
+
+    if normalize:
+        confusion_matrix = confusion_matrix.astype('float') / confusion_matrix.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+
+            reports['{}|{}'.format(model, k)] = {
+                'score': score
+                , 'confmat': confmat
+            }
 
 
 
@@ -86,5 +109,9 @@ def generate_dataframe( pred_list ):
 
     for a_list in pred_list:
         for i in range(len(a_list)): df.loc[i, a_list[i]] += 1
+
+    # convert from count to frequency
+    totals = df.values.sum(axis=1)
+    df.values = df.values/total[:,None]
 
     return df
