@@ -13,7 +13,7 @@ from seqpy.core.cfuncs import genoutils
 
 def init_argparser():
     parser = arg_parser('Assess SNP and sample quality from nalt file')
-    parser = naltparser.init_argparser(parser)
+    parser = naltparser.init_argparser(parser, with_group=False)
 
     return parser
 
@@ -34,7 +34,7 @@ def nalt2qc(args):
     """
 
     start_time = time.monotonic()
-    nalt_parser = naltparser.NAltLineParser(args, datatype='nalt')
+    nalt_parser = naltparser.NAltLineParser(args, datatype='nalt', with_group=False)
     samples = nalt_parser.parse_samples()
     whole = nalt_parser.parse_whole()
     cerr('[I - reading input file in %s secs]' % ( time.monotonic() - start_time))
