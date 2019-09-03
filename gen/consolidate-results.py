@@ -3,7 +3,7 @@
 from seqpy import cout, cerr, cexit, gzopen
 from seqpy.cmds import arg_parser
 from seqpy.core.bioio import grpparser
-from seqpy.
+from seqpy.core.cfuncs import lkmodels
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ def init_argparser(p=None):
     p = grpparser.init_argparser(p)
     p.add_argument('--fmt', default='text', choices=['pickle', 'npy', 'text', 'list'])
     p.add_argument('--samplefile', default='')
-    p.add_argument('--threshold', type=int, default=100)
+    p.add_argument('--threshold', type=float, default=1.0)
     p.add_argument('--outreport', default='')
     p.add_argument('infile')
     return p
@@ -28,6 +28,8 @@ def main( args ):
 
 
 def consolidate_predictions( args ):
+
+    outreport = None
 
     if args.samplefile:
         samples = read_samplefile( args.samplefile, args.fmt)
@@ -42,10 +44,12 @@ def consolidate_predictions( args ):
     with open(args.infile, 'rb') as f:
         predictions = pickle.load(f)
 
-    if args.outscore:
-        outreport = open(args.outscore, 'rb')
-    reports = []
+    if args.outreport:
+        outreport = open(args.outreport, 'wb')
+        from sklearn.metrics import confusion_matrix
+    reports = {}
 
+    normalize = True
 
     for model in predictions:
         model_pred = predictions[model]
@@ -63,20 +67,26 @@ def consolidate_predictions( args ):
                 if prediction_confidence < args.threshold or predicted_group != group_keys[i]:
                     cout('{}: {} -> {} ({})'.format(samples[i], group_keys[i], predicted_group, prediction_confidence))
 
-            score = lkmodels.calculate_score(group_keys, group_predictions)
-            confmat = confusion_matrix(group_keys, group_predictions)
+            if outreport:
 
-    if normalize:
-        confusion_matrix = confusion_matrix.astype('float') / confusion_matrix.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
+                score = lkmodels.calculate_scores(group_keys, group_predictions)
+                confmat = confusion_matrix(group_keys, group_predictions)
 
+                if normalize:
+                    confmat = confmat.astype('float') / confmat.sum(axis=1)[:, np.newaxis]
+                    cerr("[I - Normalized confusion matrix]")
+                else:
+                    cerr('[I - Confusion matrix, without normalization]')
 
-            reports['{}|{}'.format(model, k)] = {
-                'score': score
-                , 'confmat': confmat
-            }
+                reports['{}|{}'.format(model, k)] = {
+                    'score': score
+                    , 'confmat': confmat
+                }
+
+    if outreport:
+        pickle.dump(reports, outreport)
+        cerr('[I - writing pickled report to {}]'.format(args.outreport))
+
 
 
 
@@ -93,9 +103,10 @@ def read_samplefile( infile, fmt ):
     elif fmt == 'list':
         with gzopen(infile) as f:
             buf = f.read()
-            samples = buf.split()
+            samples = buf.strip().split()
 
     else:
+        # only read the first line
         with gzopen(infile) as f:
             samples = f.readline().strip().split()
 
@@ -112,6 +123,6 @@ def generate_dataframe( pred_list ):
 
     # convert from count to frequency
     totals = df.values.sum(axis=1)
-    df.values = df.values/total[:,None]
+    values = df.values/totals[:,None]
 
-    return df
+    return pd.DataFrame( values, columns = labels )
