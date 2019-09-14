@@ -18,6 +18,7 @@ from seqpy.core.cfuncs import genoutils
 def init_argparser():
     p = arg_parser("Convert VCF to ratio of alternate ref dataset")
     p.add_argument('--autofilename', default=False, action='store_true')
+    p.add_argument('--mindepth', default=1, type=int)
     p.add_argument('-o', '--outfile', default='outdata')
     p.add_argument('infile')
 
@@ -84,12 +85,12 @@ def vcf2ralt( args ):
     cerr('[I: finish writing %d sites in %d secs]' % (c, time.monotonic() - start_time))
 
 
-def ralt(genotypes):
+def ralt(genotypes, mindepth = 1):
 
     data = np.zeros( shape = len(genotypes), dtype=float )
     for idx, gt in enumerate(genotypes):
         gt_tot = gt[0] + gt[1]
-        if gt_tot == 0:
+        if gt_tot < mindepth:
             data[idx] = -1.0
             continue
         data[idx] = gt[0]/gt_tot
