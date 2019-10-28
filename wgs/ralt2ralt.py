@@ -20,6 +20,7 @@ def init_argparser(p=None):
     p.add_argument('--includepos', default=None)
     p.add_argument('--excludesample', default=None)
     p.add_argument('--includesample', default=None)
+    p.add_argument('--completesamples', default=False, action="store_true")
     p.add_argument('--mac', default=0, type=int)
     p.add_argument('--type', default='ralt')
     p.add_argument('--autofilename', default=False, action='store_true')
@@ -91,6 +92,14 @@ def ralt2ralt( args ):
             len(included_samples), len(included_indexes), len(samples)))
         whole_region.filter_samples(included_indexes)
         samples = samples[included_indexes]
+
+    if args.completesamples:
+        # only output samples without missing SNPs
+        indv_missing = whole_region.get_snp_missingness()
+        complete_indv = np.where(indv_missing == 0.0)[0]
+        #import IPython; IPython.embed()
+        whole_region.filter_samples(complete_indv)
+        samples = samples[complete_indv]
 
     if args.mac > 0:
         whole_region.filter_mac(args.mac)
