@@ -49,13 +49,13 @@ def pcoa( args ):
 
     pcoa = allel.pcoa(distm)
 
-    fig = plt.figure( figsize = (9, 9), dpi = args.dpi )
+    fig = plt.figure( figsize = (27, 9), dpi = args.dpi )
 
     fig_idx = 1
     colour_list = group_parser.colour_list()
     for pcx, pcy in combinations([0,1,2], 2):
 
-        ax = fig.add_subplot(3, 1, fig_idx)
+        ax = fig.add_subplot(1, 3, fig_idx)
         fig_idx += 1
 
         make_plot(ax, pcoa[0][:,pcx], pcoa[0][:,pcy], colour_list, args.dotsize)
