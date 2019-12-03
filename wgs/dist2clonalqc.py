@@ -14,7 +14,8 @@ def init_argparser(p=None):
     if not p:
         p = arg_parser('dist2clonalqc.py')
     p.add_argument('--qualfile', default=None)
-    p.add_argument('--picklefile', default=None)
+    p.add_argument('--datafile', default=None)
+    p.add_argument('--fmt', default='npy')
     p.add_argument('--threshold', type=float, default=0.01/100)
     p.add_argument('-o', '--outfile', default=None)
     p.add_argument('infile')
@@ -44,9 +45,9 @@ def dist2clonalqc( args ):
     D = df.values
 
     # read quality file or pickled ralt/nalt file
-    if args.picklefile:
+    if args.datafile:
 
-        nalt_args = SimpleNamespace( infile = args.picklefile, fmt = 'pickle', n = -1)
+        nalt_args = SimpleNamespace( infile = args.datafile, fmt = args.fmt, n = -1)
         nalt_parser = naltparser.NAltLineParser(nalt_args
                 , with_group=False, with_position=False)
         region = nalt_parser.parse_whole()
