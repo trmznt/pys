@@ -38,11 +38,11 @@ def train( args ):
     samples = nalt_parser.parse_samples()
 
     poslines = [ line.split() for line in open(args.includepos) ][1:]
-    region.filter_poslines(poslines, inplace=True)
+    region.filter_poslines(poslines, inplace=False, sort_position=False)
     haplotypes = region.haplotypes()
 
     cerr('[I - fitting for {}]'.format( args.code ))
-    classifier = lkest.SNPLikelihoodEstimator()
+    classifier = lkest.SNPLikelihoodEstimator(H0=True)
     classifier.fit(haplotypes, group_keys)
     profile = classifier.get_profile()
     profile.positions = region.P
