@@ -56,7 +56,7 @@ def do_export_ralt(M, sample_idx, site_idx, indv_idx, args):
 
     cerr('[I - exporting sample and position indexes for %d samples' % args.s)
     collected_samples = indv_idx[:args.s]
-    filt_site_idx, inf_site_idx = filter_site_idx(M, collected_samples, site_idx)
+    filt_site_idx, inf_site_idx = filter_site_idx(M, collected_samples, site_idx, mac=args.mac)
     np.savetxt('exhqc.indv.txt', collected_samples, fmt='%d')
     np.savetxt('exhqc.pos.txt', inf_site_idx, fmt='%d')
 
