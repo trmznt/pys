@@ -10,7 +10,7 @@ def init_argparser(p = None):
         p = arg_parser('groupinfo.py - provide group information')
 
     p = grpparser.init_argparser( p )
-    p.add_argument('--fmt', default='text', choices=['pickle', 'text', 'list'])
+    p.add_argument('--fmt', default='text', choices=['pickle', 'npy', 'text', 'list'])
     p.add_argument('infile')
     return p
 
@@ -18,11 +18,11 @@ def init_argparser(p = None):
 def groupinfo( args ):
 
     # open and read the first line of infile
-    if args.fmt == 'pickle':
+    if args.fmt in ['pickle', 'npy']:
 
         from seqpy.core.bioio import naltparser
         from types import SimpleNamespace
-        nalt_args = SimpleNamespace( infile = args.infile, fmt = 'pickle', n = -1)
+        nalt_args = SimpleNamespace( infile = args.infile, fmt = args.fmt, n = -1)
         nalt_parser = naltparser.NAltLineParser(nalt_args
                 , with_group=False, with_position=False)
         samples = nalt_parser.samples
