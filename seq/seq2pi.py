@@ -32,35 +32,63 @@ def seq2pi( args ):
     cerr('[I - reading sequence file %s]' % args.infile)
     seqs = load(args.infile)
 
-    # open and read group/meta file using groupfile
-    cerr('[I - reading group information file]')
-    group_parser = grpparser.GroupParser( args )
-    group_parser.parse()
+    # open and read group/meta file using groupfile/metafile if available
+    if args.groupfile or args.metafile:
+        cerr('[I - reading group information file]')
+        group_parser = grpparser.GroupParser( args )
+        group_parser.parse()
 
-    group_seqs = {}
+        group_seqs = {}
 
-    for seq in seqs:
-        grp = group_parser.group_info[seq.label.decode('ASCII')]
-        if grp in group_seqs:
-            group_seqs[grp].append( seq )
-        else:
-            ms = multisequence()
-            ms.append( seq )
-            group_seqs[grp] = ms
+        for seq in seqs:
+            grp = group_parser.group_info[seq.label.decode('ASCII')]
+            if grp in group_seqs:
+                group_seqs[grp].append( seq )
+            else:
+                ms = multisequence()
+                ms.append( seq )
+                group_seqs[grp] = ms
+    else:
+        group_seqs = {'ALL': seqs}
 
     print('Groups:')
+    for g in group_seqs:
+        avg, stddev = calc_pi(group_seqs[g])
+        print('  %20s [%3d]: %f %f' % (g, len(group_seqs[g]), avg, stddev)) 
 
 
 def calc_pi( mseqs ):
 
     pi_array = []
     for (i,j) in itertools.combinations(range(len(mseqs)), 2):
-        pi_array.append( calc_seq_diversity(mseqs[i], mseqs[j]))
+        pi_array.append( calc_propdist(mseqs[i], mseqs[j]))
 
     pi_array = np.array(pi_array)
 
     # return avg diversity and std dev
+    return (np.mean(pi_array), np.std(pi_array))
 
-    return (,)
+
+def calc_propdist(seq1, seq2):
+
+    if len(seq1) != len(seq2):
+        raise RuntimeError('[ERR: seq %s and %s do not have similar length' % (seq1, seq2))
+
+    p = l = 0.0
+    for i in range(len(seq1)):
+        if seq1[i] == b'X' or seq2[i] == b'X':
+            continue
+        if seq1[i] == seq2[i]:
+            l += 1
+        elif seq1[i] == b'N' or seq2[i] == b'N':
+            p += 0.5
+            l += 1
+        else:
+            p += 1
+            l += 1
+
+    return p/l
+
+
 
 
