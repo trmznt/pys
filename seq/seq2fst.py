@@ -5,6 +5,7 @@
 from seqpy import cout, cerr, cexit
 from seqpy.cmds import arg_parser
 from seqpy.core.bioio import load, grpparser, multisequence
+from seqpy.core.funcs import profiles
 
 import numpy as np
 import itertools
@@ -69,10 +70,18 @@ def calc_fst( mseqs1, mseqs2 ):
     return (np.mean(pi_array), np.std(pi_array))
 
 
-def to_genotype_array(mseqs*):
+def to_genotype_array(*mseqs):
 
     # genotype array is array of site vs sample vs [0,0]
-    pass
+    # 0 for the major allele, 1 for the minor allele
+
+    # create matrix profile first
+    full_mseqs = multisequence()
+    for mseq in mseqs:
+    	full_mseqs.extend( mseq )
+
+    na_profiles = profile.na_profiles( full_mseqs )
+    
 
 
 
