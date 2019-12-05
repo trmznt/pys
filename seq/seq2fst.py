@@ -52,36 +52,84 @@ def seq2fst( args ):
     else:
         cexit('[ERR - seq2fst.py requires group information!]')
 
-    print('Groups:')
-    for g in group_seqs:
-        avg, stddev = calc_pi(group_seqs[g])
-        print('  %20s [%3d]: %f %f' % (g, len(group_seqs[g]), avg, stddev))
+    FST_mat = calc_fst( group_seqs )
 
 
-def calc_fst( mseqs1, mseqs2 ):
-
-    pi_array = []
-    for (i,j) in itertools.combinations(range(len(mseqs)), 2):
-        pi_array.append( calc_propdist(mseqs[i], mseqs[j]))
-
-    pi_array = np.array(pi_array)
-
-    # return avg diversity and std dev
-    return (np.mean(pi_array), np.std(pi_array))
 
 
-def to_genotype_array(*mseqs):
+def calc_fst( mseqs ):
+
+    genotype_array, group_idxes = to_genotype_array( mseqs )
+
+    groups = list(mseqs.keys())
+    len_grp = len(groups)
+    FST_mat = np.zeros( (len_grp, len_grp) )
+    for i,j in itertools.combinations(len_grp, 2):
+
+        ac1 = None
+
+        FST_mat[i,j] = None
+
+def count_allele(mseqs):
+
+    full_mseqs = multisequence()
+    for grp in mseqs:
+        full_mseqs.extend( mseqs[grp] )
+
+    na_profiles = profiles.na_profile( full_mseqs, additional_ignore = b'X' )
+    consensus_seq = na_profiles.consensus(0.1)
+
+    allele_counts = {}
+    for grp in mseqs:
+        allele_count = np.zeros( (len(consensus_seq), 2) )
+        mseq = mseqs[grp]
+        for j in range(len(mseq)):
+            seq = mseq[j].seq
+            for i in range(len(consensus_seq)):
+                if seq[i] == b'N'
+                    allele_count[i, 0] += 1
+                    allele_count[i, 1] += 1
+                elif seq[i] == b'X':
+                    continue
+                elif seq[i] == consensus_seq[i]:
+                    allele_count[i, 0] += 2
+                else:
+                    allele_count[i, 1] += 2
+
+
+
+def to_genotype_array(mseqs):
 
     # genotype array is array of site vs sample vs [0,0]
     # 0 for the major allele, 1 for the minor allele
 
     # create matrix profile first
     full_mseqs = multisequence()
-    for mseq in mseqs:
-    	full_mseqs.extend( mseq )
+    indexes = {}
+    idx = 0
+    for grp in mseqs:
+        full_mseqs.extend( mseqs[grp] )
+        indexes[grp] = list(range(idx, idx+len(mseqs[grp])))
+        idx += len(mseqs[grp])
 
-    na_profiles = profile.na_profiles( full_mseqs )
-    
+    na_profiles = profiles.na_profile( full_mseqs, additional_ignore = b'X' )
+    consensus_seq = na_profiles.consensus(0.1)
+
+    genotype_array = np.zeros((len(consensus_seq), len(full_mseqs), 2), dtype=int)
+    for i, j in itertools.product(range(len(full_mseqs)), range(len(consensus_seq))):
+        seq = full_mseqs[0].seq
+        if seq[j] == b'N':
+            genotype_array[j,i] == [0, 1]
+        elif seq[j] == b'X':
+            genotype_array[j, i] == [-1, -1]
+        elif seq[j] == consensus_seq[j]:
+            genotype_array[j, i] == [0, 0]
+        else:
+            genotype_array[j, i] == [1, 1]
+
+    import IPython; IPython.embed()
+
+    return genotype_array, indexes
 
 
 
