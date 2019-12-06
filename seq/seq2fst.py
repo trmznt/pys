@@ -59,16 +59,19 @@ def seq2fst( args ):
 
 def calc_fst( mseqs ):
 
-    genotype_array, group_idxes = to_genotype_array( mseqs )
-
     groups = list(mseqs.keys())
     len_grp = len(groups)
     FST_mat = np.zeros( (len_grp, len_grp) )
+    allele_counts = count_allele( mseqs)
     for i,j in itertools.combinations(len_grp, 2):
 
-        ac1 = None
+    	ac1 = allele_counts[ groups[i] ]
+    	ac2 = allele_counts[ groups[j] ]
 
-        FST_mat[i,j] = None
+        FST_mat[i,j] = FST_mat[j,i] = allel.hudson_fst( ac1, ac2 )
+
+    return FST_mat
+
 
 def count_allele(mseqs):
 
@@ -96,6 +99,9 @@ def count_allele(mseqs):
                 else:
                     allele_count[i, 1] += 2
 
+		allele_counts[grp] = allele_count
+
+	return allele_counts
 
 
 def to_genotype_array(mseqs):
