@@ -9,6 +9,7 @@ from seqpy.core.funcs import profiles
 
 import numpy as np
 import itertools
+import allel
 
 def init_argparser(p=None):
 
@@ -16,7 +17,7 @@ def init_argparser(p=None):
         p = arg_parser('seq2pi.py - calculate nucleotide diversity (pi)')
 
     p = grpparser.init_argparser( p )
-    p.add_argument('-o', '--outfile', default='outfile.pi.txt')
+    p.add_argument('-o', '--outfile', default='outfile.fst.txt')
     p.add_argument('infile')
 
     return p
@@ -52,9 +53,12 @@ def seq2fst( args ):
     else:
         cexit('[ERR - seq2fst.py requires group information!]')
 
-    FST_mat = calc_fst( group_seqs )
+    FST_mat, groups = calc_fst( group_seqs )
 
-
+    with open(args.outfile, 'w') as fout:
+        fout.write('\t'.join( groups ))
+        fout.write('\n')
+        np.savetxt(fout, FST_mat, fmt='%5.4f', delimiter='\t')
 
 
 def calc_fst( mseqs ):
@@ -63,14 +67,20 @@ def calc_fst( mseqs ):
     len_grp = len(groups)
     FST_mat = np.zeros( (len_grp, len_grp) )
     allele_counts = count_allele( mseqs)
-    for i,j in itertools.combinations(len_grp, 2):
+    for i,j in itertools.combinations(range(len_grp), 2):
 
-    	ac1 = allele_counts[ groups[i] ]
-    	ac2 = allele_counts[ groups[j] ]
+        ac1 = allele_counts[ groups[i] ]
+        ac2 = allele_counts[ groups[j] ]
 
-        FST_mat[i,j] = FST_mat[j,i] = allel.hudson_fst( ac1, ac2 )
+        with np.errstate(divide='ignore', invalid='ignore'):
+            num, den = allel.hudson_fst( ac1, ac2 )
 
-    return FST_mat
+            FST_mat[i,j] = np.nanmean( num/den ) #np.sum(num) / np.sum(den)
+            FST_mat[j,i] = np.nanstd( num/den )
+
+        cout('%5.4f +- %5.4f : %s <> %s' % (FST_mat[i,j], FST_mat[j,i], groups[i], groups[j]))
+
+    return FST_mat, groups
 
 
 def count_allele(mseqs):
@@ -89,7 +99,7 @@ def count_allele(mseqs):
         for j in range(len(mseq)):
             seq = mseq[j].seq
             for i in range(len(consensus_seq)):
-                if seq[i] == b'N'
+                if seq[i] == b'N':
                     allele_count[i, 0] += 1
                     allele_count[i, 1] += 1
                 elif seq[i] == b'X':
@@ -99,9 +109,9 @@ def count_allele(mseqs):
                 else:
                     allele_count[i, 1] += 2
 
-		allele_counts[grp] = allele_count
+        allele_counts[grp] = allele_count
 
-	return allele_counts
+    return allele_counts
 
 
 def to_genotype_array(mseqs):
@@ -133,32 +143,4 @@ def to_genotype_array(mseqs):
         else:
             genotype_array[j, i] == [1, 1]
 
-    import IPython; IPython.embed()
-
     return genotype_array, indexes
-
-
-
-def calc_propdist(seq1, seq2):
-
-    if len(seq1) != len(seq2):
-        raise RuntimeError('[ERR: seq %s and %s do not have similar length' % (seq1, seq2))
-
-    p = l = 0.0
-    for i in range(len(seq1)):
-        if seq1[i] == b'X' or seq2[i] == b'X':
-            continue
-        if seq1[i] == seq2[i]:
-            l += 1
-        elif seq1[i] == b'N' or seq2[i] == b'N':
-            p += 0.5
-            l += 1
-        else:
-            p += 1
-            l += 1
-
-    return p/l
-
-
-
-
