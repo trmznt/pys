@@ -52,9 +52,18 @@ def seq2pi( args ):
         group_seqs = {'ALL': seqs}
 
     print('Groups:')
+    outf = open(args.outfile, 'w') if args.outfile else None
+    if outf:
+        outf.write('GROUP\tN\tPI\tSTDDEV\n')
     for g in group_seqs:
         avg, stddev = calc_pi(group_seqs[g])
-        print('  %20s [%3d]: %f %f' % (g, len(group_seqs[g]), avg, stddev)) 
+        cout('  %20s [%3d]: %f %f' % (g, len(group_seqs[g]), avg, stddev))
+        if outf:
+            outf.write('%s\t%d\t5.4f\t5.4f\n' % (g, len(group_seqs[g]), avg, stddev))
+
+    if outf:
+        cerr('[I - result written to %s' % args.outfile)
+
 
 
 def calc_pi( mseqs ):
