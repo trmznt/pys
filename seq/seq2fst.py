@@ -43,7 +43,11 @@ def seq2fst( args ):
         group_seqs = {}
 
         for seq in seqs:
-            grp = group_parser.group_info[seq.label.decode('ASCII')]
+            try:
+                grp = group_parser.group_info[seq.label.decode('ASCII')]
+            except KeyError:
+                cerr('[W - sample %s is not assign to any group]' % seq.label.decode('ASCII'))
+                continue
             if grp in group_seqs:
                 group_seqs[grp].append( seq )
             else:
@@ -52,6 +56,9 @@ def seq2fst( args ):
                 group_seqs[grp] = ms
     else:
         cexit('[ERR - seq2fst.py requires group information!]')
+
+    for grp_seq in group_seqs:
+        cerr('[I - group %s has %d sample(s)]' % (grp_seq, len(group_seqs[grp_seq])))
 
     FST_mat, groups = calc_fst( group_seqs )
 

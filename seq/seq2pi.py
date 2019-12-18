@@ -41,7 +41,11 @@ def seq2pi( args ):
         group_seqs = {}
 
         for seq in seqs:
-            grp = group_parser.group_info[seq.label.decode('ASCII')]
+            try:
+                grp = group_parser.group_info[seq.label.decode('ASCII')]
+            except KeyError:
+                cerr('[W - sample %s is not assign to any group]' % seq.label.decode('ASCII'))
+                continue
             if grp in group_seqs:
                 group_seqs[grp].append( seq )
             else:
@@ -57,9 +61,9 @@ def seq2pi( args ):
         outf.write('GROUP\tN\tPI\tSTDDEV\n')
     for g in group_seqs:
         avg, stddev = calc_pi(group_seqs[g])
-        cout('  %20s [%3d]: %f %f' % (g, len(group_seqs[g]), avg, stddev))
+        cout('  %20s [%3d]: %f +- %f' % (g, len(group_seqs[g]), avg, stddev))
         if outf:
-            outf.write('%s\t%d\t5.4f\t5.4f\n' % (g, len(group_seqs[g]), avg, stddev))
+            outf.write('%s\t%d\t%5.4f\t%5.4f\n' % (g, len(group_seqs[g]), avg, stddev))
 
     if outf:
         cerr('[I - result written to %s' % args.outfile)
