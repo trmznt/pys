@@ -18,6 +18,7 @@ def init_argparser(p=None):
 
     p = grpparser.init_argparser( p )
     p.add_argument('-o', '--outfile', default='outfile.fst.txt')
+    p.add_argument('--sitefile', default='')
     p.add_argument('infile')
 
     return p
@@ -60,6 +61,21 @@ def seq2fst( args ):
     for grp_seq in group_seqs:
         cerr('[I - group %s has %d sample(s)]' % (grp_seq, len(group_seqs[grp_seq])))
 
+    if args.sitefile:
+        # perform FST site-wise
+        FST_sites = calc_site_fst( group_seqs )
+
+        with open(args.sitefile, 'w') as fout:
+            for (label, mat) in FST_sites:
+                fout.write(label)
+                fout.write('\t')
+                np.savetxt(fout, mat, fmt='%5.4f', delimiter='\t', newline='\t')
+                fout.write('\n')
+
+        cerr('[I - site FST written to %s]' % (args.sitefile))
+        return
+
+
     FST_mat, groups = calc_fst( group_seqs )
 
     with open(args.outfile, 'w') as fout:
@@ -88,6 +104,25 @@ def calc_fst( mseqs ):
         cout('%5.4f +- %5.4f : %s <> %s' % (FST_mat[i,j], FST_mat[j,i], groups[i], groups[j]))
 
     return FST_mat, groups
+
+def calc_site_fst( mseqs ):
+
+    groups = list(mseqs.keys())
+    len_grp = len(groups)
+    FST_sites = []
+    allele_counts = count_allele( mseqs)
+    for i,j in itertools.combinations(range(len_grp), 2):
+
+        ac1 = allele_counts[ groups[i] ]
+        ac2 = allele_counts[ groups[j] ]
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            num, den = allel.hudson_fst( ac1, ac2 )
+
+            # convert nan to zero as well
+            FST_sites.append( ('%s <> %s' % (groups[i], groups[j]), np.nan_to_num(num/den)) )
+
+    return FST_sites
 
 
 def count_allele(mseqs):
