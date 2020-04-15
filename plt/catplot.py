@@ -13,6 +13,7 @@ def init_argparser():
     parser = arg_parser("plot_accuracies.py")
     parser.add_argument('--variables', default='F')
     parser.add_argument('--method', default='')
+    parser.add_argument('--modelid', default='')
     parser.add_argument('--region', default=None)
     parser.add_argument('--hue', default='k')
     parser.add_argument('--row', default=None)
@@ -79,6 +80,10 @@ def plot_accuracies(args):
     # filter data
     if args.method:
         data = data[ data['METHOD'] == args.method ]
+
+    if args.modelid:
+        modelids = args.modelid.split(',')
+        data = data[ data['MODELID'].isin( modelids) ]
 
     # parse variables & regions
 
