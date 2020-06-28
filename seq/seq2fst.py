@@ -19,6 +19,7 @@ def init_argparser(p=None):
     p = grpparser.init_argparser( p )
     p.add_argument('-o', '--outfile', default='outfile.fst.txt')
     p.add_argument('--sitefile', default='')
+    p.add_argument('--nantozero', action='store_true', default=False)
     p.add_argument('infile')
 
     return p
@@ -63,7 +64,7 @@ def seq2fst( args ):
 
     if args.sitefile:
         # perform FST site-wise
-        FST_sites = calc_site_fst( group_seqs )
+        FST_sites = calc_site_fst( group_seqs, args.nantozero )
 
         with open(args.sitefile, 'w') as fout:
             for (label, mat) in FST_sites:
@@ -105,7 +106,7 @@ def calc_fst( mseqs ):
 
     return FST_mat, groups
 
-def calc_site_fst( mseqs ):
+def calc_site_fst( mseqs, nan_to_zero=False ):
 
     groups = list(mseqs.keys())
     len_grp = len(groups)
@@ -119,8 +120,12 @@ def calc_site_fst( mseqs ):
         with np.errstate(divide='ignore', invalid='ignore'):
             num, den = allel.hudson_fst( ac1, ac2 )
 
-            # convert nan to zero as well
-            FST_sites.append( ('%s <> %s' % (groups[i], groups[j]), np.nan_to_num(num/den)) )
+            if nan_to_zero:
+                # convert nan to zero
+                fst = np.nan_to_num(num/den)
+            else:
+                fst = num/den
+            FST_sites.append( ('%s <> %s' % (groups[i], groups[j]), fst ) )
 
     return FST_sites
 
