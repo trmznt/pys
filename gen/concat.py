@@ -24,16 +24,20 @@ def concat( args ):
     columns = args.column.split(',') if args.column else None
 
     dfs = []
+    c = 0
     for infile in args.infiles:
-        df = pandas.read_table(infile)
+        df = pandas.read_table(infile, sep='\t')
         if columns:
             dfs.append( df.loc[:, columns ])
         else:
             dfs.append( df )
+        c += 1
 
     # combine dfs
+    cerr('[Combining %d tables]' % c)
     new_df = pandas.concat( dfs, ignore_index=True)
     new_df.to_csv(args.outfile, '\t', index=False)
+    cerr('[Writing to %s]' % args.outfile)
 
 
 
