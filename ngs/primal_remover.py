@@ -261,7 +261,7 @@ def softmask(read1, read2, ampinfo):
     # check if read1 needs trimming from 3'
     if rs <= read1.reference_end <= re and rs <= read2.reference_end <= re:
         # trim read1 only if cigar is simple
-        if len(read1.cigar) != 1
+        if len(read1.cigar) != 1:
             return None
         trim_size = read1.reference_end - rs
         if read1.cigar[0][1] <= trim_size:
