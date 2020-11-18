@@ -65,7 +65,7 @@ def nalt2qc(args):
 
     # create imiss stats
     imiss = np.zeros(shape=(len(samples), 5))
-    n_snps = asamples[:, 0].sum()
+    n_snps = asamples[:, 0]
     imiss[:, 0] = asamples[:, 0]
     imiss[:, 1] = asamples[:, 1]
     imiss[:, 2] = asamples[:, 1] / n_snps
@@ -74,7 +74,7 @@ def nalt2qc(args):
 
     # create lmiss stats
     snps = np.array(snps)
-    n_samples = snps[:, 0].sum()
+    n_samples = snps[:, 0]
     lmiss = np.zeros(shape=(len(snps), 5))
     lmiss[:, 0] = snps[:, 0]
     lmiss[:, 1] = snps[:, 1]
