@@ -66,7 +66,7 @@ def ralt2ralt( args ):
         cerr('[I - filtering for %d SNP position]' % len(pos_indexes))
         whole_region.filter_positions(pos_indexes)
     elif args.includepos:
-        with open(args.includepos) as f_posline:
+        with gzopen(args.includepos) as f_posline:
             poslines = [ x.split() for x in f_posline ]
             if poslines[0][0] == 'CHROM' and poslines[0][1] == 'POS':
                 del poslines[0]
