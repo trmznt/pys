@@ -48,6 +48,7 @@ def vcf2ralt( args ):
     pos_file = args.outfile + '.pos.txt'
     geno_file = args.outfile + '.ralt.txt'
     nmdp_file = args.outfile + '.nmdp.txt'
+    depth_file = args.outfile + '.depth.txt'
 
     # write position
     # position file is:
@@ -65,19 +66,22 @@ def vcf2ralt( args ):
 
     # write genotype by converting the genotype
     cerr('[I: writing genotype file]')
-    with open(geno_file, 'w') as outfile, open(nmdp_file, 'w') as outnmdp:
+    with open(geno_file, 'w') as outfile, open(nmdp_file, 'w') as outnmdp, open(depth_file, 'w') as outdepth:
         outfile.write( '\t'.join( list( vcfset['samples'])))
         outfile.write('\n')
         outnmdp.write( '\t'.join( list( vcfset['samples'])))
         outnmdp.write('\n')
+        outdepth.write( '\t'.join( list( vcfset['samples'])))
+        outdepth.write('\n')
         c = 0
         for gts in vcfset['calldata/AD']:
             #np.savetxt( outfile, majgeno(gts), fmt="%d", delimiter="\t" )
-            ratios, nread = genoutils.ralt(gts)
+            ratios, nread, depth = genoutils.ralt(gts)
             #outfile.write( '\t'.join( '%4.3f' % x for x in genoutils.ralt(gts)) )
             #outfile.write('\n')
             np.savetxt(outfile, [ratios], delimiter='\t', fmt='%4.3f')
             np.savetxt(outnmdp, [nread], delimiter='\t', fmt='%d')
+            np.savetxt(outdepth, [depth], delimiter='\t', fmt='%d')
             c += 1
             if c % 1000 == 0:
                 cerr('[I: writing site %d]' % c)
