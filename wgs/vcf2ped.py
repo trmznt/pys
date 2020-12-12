@@ -41,7 +41,7 @@ def vcf2ped( args ):
     # write to PED
     with open(args.outprefix + '.ped', 'w') as outf:
         for i in range(len(samples)):
-            outf.write('%s\t%s\t' % (groups[i], samples[i]))
+            outf.write('%s\t%s\t0\t0\t1\t0\t' % (groups[i], samples[i]))
             alleles = []
             for gt in vcfset['calldata/GT'][:,i]:
                 allele_1, allele_2 = gt
@@ -60,6 +60,19 @@ def vcf2ped( args ):
             outf.write('\t'.join( str(i) for i in alleles))
             outf.write('\n')
             #import IPython; IPython.embed()
+
+    # write to MAP
+    with open(args.outprefix + '.map', 'w') as outf:
+        last_pos = 0
+        curr_chr = None
+        for (chrom, pos) in zip( vcfset['variants/CHROM'], vcfset['variants/POS'] ):
+            if curr_chr != chrom:
+                curr_chr = chrom
+                last_pos = 0
+            dist = (pos - last_pos) * 1e-6
+            last_pos = pos
+            outf.write('%s\t%s:%d\t%8.6f\t%d\n' % (chrom, chrom, pos, dist, pos))
+
 
 
 def main( args ):
