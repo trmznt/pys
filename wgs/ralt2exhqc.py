@@ -70,7 +70,7 @@ def do_exhqc_ralt(M, sample_idx, site_idx, indv_idx, complete_indv, args):
 
     start_indv = len(indv_idx) if args.k < 0 else args.k
     cerr('[I - iteration start from %d to %d samples' % (start_indv, complete_indv-1))
-    for k in range(start_indv, complete_indv-1, -1):
+    for k in range(start_indv, complete_indv-1, 0):
         sample_indexes = indv_idx[:k]
 
         cerr('[I - filtering using %d samples]' % len(sample_indexes))
