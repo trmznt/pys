@@ -18,7 +18,6 @@ def init_argparser(p=None):
 
     p.add_argument('--mac', type=int, default=1, help="Minor Allele Count")
     p.add_argument('--miss', type=float, default=1.0, help='Missingness fraction threshold')
-    p.add_argument('--mindepth', type=int, default=0, help='minimum depth, need to use depth file')
     p.add_argument('-k', type=int, default=-1, help='start from individual/samples no K')
     p.add_argument('-o', '--outfile', default='out.exhqc.txt')
     p.add_argument('-s', type=int, default=-1, help='no of sample to be exported')
@@ -41,7 +40,7 @@ def ralt2exhqc( args ):
         % (len(site_idx), len(sample_idx), time.monotonic() - start_time))
 
     # create sample missingness
-    indv_missing = np.count_nonzero(M < args.mindepth, axis=0) / len(sample_idx)
+    indv_missing = np.count_nonzero(M < 0, axis=0) / len(sample_idx)
     complete_indv = np.count_nonzero(indv_missing == 0.0)
 
     # sorted by args
