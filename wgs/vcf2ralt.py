@@ -76,7 +76,7 @@ def vcf2ralt( args ):
         c = 0
         for gts in vcfset['calldata/AD']:
             #np.savetxt( outfile, majgeno(gts), fmt="%d", delimiter="\t" )
-            ratios, nread, depth = genoutils.ralt(gts)
+            ratios, nread, depth = genoutils.ralt(gts, args.mindepth)
             #outfile.write( '\t'.join( '%4.3f' % x for x in genoutils.ralt(gts)) )
             #outfile.write('\n')
             np.savetxt(outfile, [ratios], delimiter='\t', fmt='%4.3f')
