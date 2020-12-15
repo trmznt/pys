@@ -17,6 +17,9 @@ def init_argparser():
     p.add_argument('--column', type=int, required=True)
     p.add_argument('--asc', action="store_true")
     p.add_argument('--desc', action="store_true")
+    p.add_argument('--xlabel', default='')
+    p.add_argument('--ylabel', default='')
+    p.add_argument('--title', default='')
     p.add_argument('--dpi', type=int, default=600)
     p.add_argument('-o', '--outfile', default="outplot.png")
 
@@ -51,5 +54,11 @@ def barplot( args ):
     #plt.bar( np.arange(0, len(heights)), heights, 1.0)
     #plt.plot( heights )
     plt.scatter( np.arange(0, len(heights)), heights, 0.25 )
+    if args.xlabel:
+        plt.xlabel(args.xlabel)
+    if args.ylabel:
+        plt.ylabel(args.ylabel)
+    if args.title:
+        plt.title(args.title)
     plt.savefig(args.outfile, dpi = args.dpi)
 
