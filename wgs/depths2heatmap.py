@@ -11,6 +11,7 @@ def init_argparser():
     p = argparse.ArgumentParser()
     p.add_argument('-o', '--outplot', default='outplot.pdf')
     p.add_argument('--mindepth', type=int, default=0)
+    p.add_argument('--title', default='Depth Plot of SNPs and Regions')
     p.add_argument('--debug', default=False, action='store_true')
     p.add_argument('infile')
     return p
@@ -38,10 +39,10 @@ def generate_heatmap(data, title, outfile):
 def depths2heatmap(args):
 
     snp_depths = pd.read_table(args.infile, sep='\t', index_col=0)
-    title = 'Depth Plot of SNPs and Regions'
+    title = args.title
     if args.mindepth > 0:
         snp_depths.values[snp_depths.values < args.mindepth] = 0
-        title = title + f' (> {args.mindepth})'
+        title = title + f' (> {args.mindepth}X)'
     generate_heatmap(snp_depths, title, args.outplot)
 
 
