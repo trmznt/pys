@@ -102,8 +102,10 @@ def vcf2depths(args):
 
     bed = None
     if args.bedfile:
+        print(f'Reading BED file: {args.bedfile}')
         bed = read_bedfile(args.bedfile)
 
+    print(f'Reading VCF file: {args.infile}')
     vcf = allel.read_vcf(args.infile, fields=['samples', 'variants', 'calldata/DP', 'calldata/GT', 'calldata/AD'])
 
     if bed:
