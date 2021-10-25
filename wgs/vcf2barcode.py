@@ -15,6 +15,7 @@ def init_argparser():
                    help='The ratio of allele depth over total depth to call hets. '
                    'Value of 0.67 means if depth_of_major_allele/total_depth is < 0.67, '
                    'the genotype will be N.')
+    p.add_argument('--debug', default=False, action='store_true')
     p.add_argument('infile')
     return p
 
@@ -51,6 +52,8 @@ def prepare_snp_indexes(target_positions, source_positions):
             real_targets.append(p)
         except ValueError:
             print(f'Warning: missing position: {p[0]} {p[1]}')
+            indexes.append(-1)
+            real_targets.append(p)
 
     return indexes, real_targets
 
@@ -69,9 +72,12 @@ def vcf2barcode(args):
     snp_positions = list(zip(vcf['variants/CHROM'], vcf['variants/POS']))
     snp_indexes, target_positions = prepare_snp_indexes(bed['snps'], snp_positions)
 
-    allele_depths = allel.GenotypeArray(vcf['calldata/AD'])
-    refs = vcf['variants/REF'][snp_indexes]
-    alts = vcf['variants/ALT'][snp_indexes]
+    # adding mmissing data at the end of all array data to accomdate missing positions, ie. -1 indexing position
+    calldata_ad = vcf['calldata/AD']
+    _, d1, d2 = calldata_ad.shape
+    allele_depths = allel.GenotypeArray(np.append(calldata_ad, np.full((1, d1, d2), -1, dtype=np.int16), axis=0))
+    refs = np.append(vcf['variants/REF'], ['X'])[snp_indexes]
+    alts = np.append(vcf['variants/ALT'], [['X', '', '']], axis=0)[snp_indexes]
     alleles = np.insert(alts, 0, refs, axis=1)
     N, L = len(samples), len(snp_indexes)
     barcodes = []
@@ -133,7 +139,7 @@ if __name__ == '__main__':
     args = init_argparser().parse_args()
     if args.debug:
         from ipdb import launch_ipdb_on_exception
-        with launch_ipdb_on_exception:
+        with launch_ipdb_on_exception():
             main(args)
     else:
         main(args)

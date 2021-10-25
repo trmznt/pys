@@ -12,10 +12,12 @@ def init_argparser():
     p = argparse.ArgumentParser()
     p.add_argument('-o', '--outfile', default='outdepths.txt')
     p.add_argument('-b', '--bedfile', default='')
+    p.add_argument('-q', type=float, default=0.25)
     p.add_argument('--minlen', type=int, default=10,
                    help='Cutoff for minimum region length.')
     p.add_argument('--maxinterval', type=int, default=5,
                    help='Cutoff for the interval still considered as a single spanning region.')
+    p.add_argument('--debug', default=False, action='store_true')
     p.add_argument('infile')
     return p
 
@@ -134,7 +136,8 @@ def vcf2depths(args):
             if pos_info[2] == 1:
                 region_depths[l_idx, n_idx] = depths.min()
             else:
-                region_depths[l_idx, n_idx] = np.quantile(depths[~vcf['variants/INDEL'][pos_info[3]:pos_info[4]]], 0.25)
+                region_depths[l_idx, n_idx] = np.quantile(depths[~vcf['variants/INDEL'][pos_info[3]:pos_info[4]]],
+                                                          args.q)
     print()
 
     df = pd.DataFrame(region_depths, columns=samples, index=[f'{p[0]}:{p[1]}+{p[2]}' for p in aggregate_positions])
@@ -150,7 +153,7 @@ if __name__ == '__main__':
     args = init_argparser().parse_args()
     if args.debug:
         from ipdb import launch_ipdb_on_exception
-        with launch_ipdb_on_exception:
+        with launch_ipdb_on_exception():
             main(args)
     else:
         main(args)

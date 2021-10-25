@@ -12,19 +12,22 @@ def init_argparser():
     p.add_argument('-o', '--outplot', default='outplot.pdf')
     p.add_argument('--mindepth', type=int, default=0)
     p.add_argument('--title', default='Depth Plot of SNPs and Regions')
+    p.add_argument('--xaspect', type=float, default=1)
+    p.add_argument('--yaspect', type=float, default=1)
     p.add_argument('--debug', default=False, action='store_true')
     p.add_argument('infile')
     return p
 
 
-def generate_heatmap(data, title, outfile):
+def generate_heatmap(data, title, outfile, xaspect, yaspect):
 
     # calculate the size for the plot
     L = len(data.columns)
     N = len(data.index)
     max_ylabel_len = data.index.str.len().max()
     max_xlabel_len = data.columns.str.len().max()
-    plt.subplots(figsize=((L * 2 + max_ylabel_len / 2) / 10, (N * 2 + max_xlabel_len / 2) / 10))
+    plt.subplots(figsize=((L * 2 + max_ylabel_len / 2) / 10 * xaspect,
+                          (N * 2 + max_xlabel_len / 2) / 10 * yaspect))
     ax = sns.heatmap(data, yticklabels=1, xticklabels=1, square=True, norm=LogNorm(),
                      cmap='Wistia', linewidths=0.25, cbar_kws={'shrink': 0.5})
     # ax.set_xticklabels(data.columns, fontsize=2)
@@ -43,7 +46,7 @@ def depths2heatmap(args):
     if args.mindepth > 0:
         snp_depths.values[snp_depths.values < args.mindepth] = 0
         title = title + f' (> {args.mindepth}X)'
-    generate_heatmap(snp_depths, title, args.outplot)
+    generate_heatmap(snp_depths, title, args.outplot, args.xaspect, args.yaspect)
 
 
 def main(args):
@@ -55,7 +58,7 @@ if __name__ == '__main__':
     args = init_argparser().parse_args()
     if args.debug:
         from ipdb import launch_ipdb_on_exception
-        with launch_ipdb_on_exception:
+        with launch_ipdb_on_exception():
             main(args)
     else:
         main(args)
