@@ -27,6 +27,8 @@ def read_bedfile(bedfile):
     bed = {'snps': [], 'regions': []}
     with open(bedfile) as f:
         for line in f:
+            if line.startswith('#'):
+                continue
             tokens = line.strip().split()
             start_pos, end_pos = int(tokens[1]), int(tokens[2])
             span = end_pos - start_pos
