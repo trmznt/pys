@@ -24,6 +24,9 @@ def read_bedfile(bedfile):
             if line.startswith('#'):
                 continue
             tokens = line.strip().split()
+            # to keep having tokens[3] even if meaningless
+            if len(tokens) < 4:
+                tokens.append('-')
             start_pos, end_pos = int(tokens[1]), int(tokens[2])
             span = end_pos - start_pos
             if span <= 0:
