@@ -85,11 +85,21 @@ def vcf2barcode(args):
     N = len(samples)
     chroms = vcf['variants/CHROM'][snp_indexes]
     positions = vcf['variants/POS'][snp_indexes]
+    if 'variants/SNPEFF_GENE_NAME' in vcf:
+        gene_names = vcf['variants/SNPEFF_GENE_NAME'][snp_indexes]
+        aa_changes = vcf['variants/SNPEFF_AMINO_ACID_CHANGE'][snp_indexes]
+    else:
+        gene_names = aa_changes = None
 
     # straight write to file
     outf = open(args.outfile, 'w')
     outf.write('CHROM\t' + '\t'.join(chroms) + '\n')
     outf.write('POS\t' + '\t'.join(str(p) for p in positions) + '\n')
+    outf.write('REF\t' + '\t'.join(vcf['variants/REF']) + '\n')
+    outf.write('ALT\t' + '\t'.join(vcf['variants/ALT'][:,0]) + '\n')
+    if gene_names is not None:
+        outf.write('GENE\t' + '\t'.join(gene_names) + '\n')
+        outf.write('AACHANGE\t' + '\t'.join(aa_changes) + '\n')
 
     for n in range(N):
         outf.write(samples[n] + '\t')
