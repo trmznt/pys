@@ -8,6 +8,7 @@ import numpy as np
 def init_argparser():
     p = argparse.ArgumentParser()
     p.add_argument('-b', '--bedfile', default='')
+    p.add_argument('-s', '--samplefile', default='')
     p.add_argument('-o', '--outfile', default='outfile.txt')
     p.add_argument('-t', '--outtarget', default='')
     p.add_argument('--mindepth', type=int, default=5)
@@ -73,6 +74,11 @@ def vcf2realmccoil(args):
         if len(bed['regions']) > 0:
             print('Warning: the BED file contains region definition, but this tool only uses SNP definition')
 
+    sample_set = None
+    if args.samplefile:
+        with open(args.samplefile) as f_sample:
+            sample_set = set(filter(x.strip() for x in f_sample))
+
     vcf = allel.read_vcf(args.infile, fields=['samples', 'variants', 'calldata/DP', 'calldata/GT', 'calldata/AD'])
 
     samples = vcf['samples']
@@ -92,8 +98,13 @@ def vcf2realmccoil(args):
     alts = np.append(vcf['variants/ALT'], [['X', '', '']], axis=0)[snp_indexes]
     N, L = len(samples), len(snp_indexes)
     all_alleles = []
+    selected_samples = []
 
-    for n in range(N):
+    for n, s in enumerate(samples):
+
+        if sample_set is not None and s not in sample_set:
+            continue
+
         sample_depths = allele_depths[snp_indexes, n]
 
         # add a priori 0.1 to total depths to avoid divide by zero (nan)
@@ -119,6 +130,7 @@ def vcf2realmccoil(args):
 
         # create the barcode string and add it barcodes container
         all_alleles.append(alleles)
+        selected_samples.append(s)
 
         # import IPython; IPython.embed()
         # input()
@@ -126,7 +138,7 @@ def vcf2realmccoil(args):
     # write to text file
     with open(args.outfile, 'w') as fout:
         fout.write('ind\t' + '\t'.join(f'{p[0]}:{p[1]}' for p in target_positions) + '\n')
-        for sample_code, alleles in zip(samples, all_alleles):
+        for sample_code, alleles in zip(selected_samples, all_alleles):
             fout.write(f'{sample_code}\t')
             np.savetxt(fout, alleles, fmt='%.1f', delimiter='\t', newline='\t')
             fout.write('\n')
