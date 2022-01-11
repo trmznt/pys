@@ -77,7 +77,8 @@ def vcf2realmccoil(args):
     sample_set = None
     if args.samplefile:
         with open(args.samplefile) as f_sample:
-            sample_set = set(filter(x.strip() for x in f_sample))
+            sample_set = set(filter(None, [x.strip() for x in f_sample]))
+        print(f'Reading {len(sample_set)} samples from {args.samplefile}')
 
     vcf = allel.read_vcf(args.infile, fields=['samples', 'variants', 'calldata/DP', 'calldata/GT', 'calldata/AD'])
 
@@ -89,6 +90,8 @@ def vcf2realmccoil(args):
         snp_indexes, target_positions = prepare_snp_indexes(bed['snps'], snp_positions)
     else:
         snp_indexes, target_positions = prepare_snp_indexes(None, snp_positions)
+
+    print(f'Reading {len(samples)} samples and {len(snp_positions)} SNPs from {args.infile}')
 
     # adding mmissing data at the end of all array data to accomdate missing positions, ie. -1 indexing position
     calldata_ad = vcf['calldata/AD']
@@ -144,7 +147,7 @@ def vcf2realmccoil(args):
             np.savetxt(fout, alleles, fmt='%.1f', delimiter='\t', newline='\t')
             fout.write('\n')
 
-    print(f'TheRealMcCOIL (L={len(snp_indexes)}) written to {args.outfile}')
+    print(f'TheRealMcCOIL (L={len(snp_indexes)}; N={len(selected_samples)}) written to {args.outfile}')
 
     # write target position
     if args.outtarget:
