@@ -123,6 +123,7 @@ def vcf2realmccoil(args):
             ).squeeze(axis=1)
             hetratios = max_values / total_depths
             het_masks = hetratios < args.hetratio
+            alleles = alleles.astype(float)
             alleles[het_masks] = 0.5
 
         # change the positions where total depths are less than mindepths to X
