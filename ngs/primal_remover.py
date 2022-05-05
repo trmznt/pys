@@ -43,6 +43,14 @@ consumesReference = [True, False, True, True, False, False, False, True]
 consumesQuery = [True, True, False, False, True, False, False, True]
 
 
+def alignment_start(read):
+    # return start position of alignment to reference
+    return read.reference_start + read.query_alignment_start
+
+def alignment_end(read):
+    # return end position of alignment to reference
+    return read.reference_end - (read.query_alignment_length - read.query_alignment_end)
+
 class PrimerLookup(object):
 
     def __init__(self, bedfile=None):
@@ -136,12 +144,12 @@ class PrimerLookup(object):
     def find_left_index(self, segment):
         """ find the first index of amplicon that can contain the segment """
         keys = self.left_keys[segment.reference_name]
-        return bisect.bisect_right(keys, segment.reference_start )-1
+        return bisect.bisect_right(keys, alignment_start(segment))-1
 
     def find_right_index(self, segment):
         """ find the last index of amplicon that can contain the segment """
         keys = self.right_keys[segment.reference_name]
-        return bisect.bisect_right(keys, segment.reference_end)
+        return bisect.bisect_right(keys, alignment_end(segment)-1)
 
 
 def softmask_primer(segment, primer_pos, end, debug):
@@ -304,10 +312,16 @@ def trim_ligation(read1, read2, primer_lookup, counter = {}):
         # with adapter ligation, reads must be product of just
         # a single amplicon set, otherwise primer mix has happened
         cerr('[possible mixup primers amplicons #%d <> #%d]' % (l_idx, r_idx))
+        (ls, le, _, _, ampid1) = lookup[l_idx]
+        (_, _, rs, re, ampid2) = lookup[r_idx]
+        ampid = '%s/%s' % (ampid1, ampid2)
+        print(lookup[l_idx], lookup[r_idx])
 
-        return None
+        #if r_idx > len(lookup):
+        #    raise RuntimeError('read2.alignment_end:', alignment_end(read2))
 
-    (ls, le, rs, re, ampid) = lookup[l_idx]
+    else:
+        (ls, le, rs, re, ampid) = lookup[l_idx]
 
     # count amplicon numbers as well
 
@@ -318,11 +332,11 @@ def trim_ligation(read1, read2, primer_lookup, counter = {}):
 
     if read1.reference_start > le or read2.reference_end < rs:
         # read1 and read2 do not start/end at primer binding site
-        # report as invalid amplicon
+        # report as warning amplicon
         cerr('[WARN: reads too short for amplicon #%d: %s bp]' %
                 (l_idx, read2.reference_end-read1.reference_start))
 
-        return False
+    print('left:', le+1, alignment_start(read1), '| right:', rs-1, alignment_end(read2))
 
     softmask_primer(read1, le+1, False, False)
     softmask_primer(read2, rs-1, True, False)
@@ -373,6 +387,7 @@ def trim_primers(segments, primer_lookup, outfile, trimmer_func=None):
     amplicon_counter = {}
 
     for (read1, read2) in grouped(segments):
+        #import IPython; IPython.embed()
         read_pairs += 1
         if read1.query_name != read2.query_name:
             cexit("ERR: reads were not sorted by name or reads were not in pairs")
@@ -387,37 +402,27 @@ def trim_primers(segments, primer_lookup, outfile, trimmer_func=None):
             cexit("ERR: found inconsistent read pair direction")
 
         if read1.is_reverse:
+            # ensure read1 is forward and read2 is reverse with respect to reference sequence
             read1, read2 = read2, read1
 
-        if read1.reference_start > read2.reference_end:
+        if alignment_start(read1) >= alignment_end(read2):
+            #                    >>>>>>>>>>>>>>>>>    read1
+            #  <<<<<<<<<<<<<<<<< read2
             # possible RF alignment, for now just exit
             cerr("ERR: found possible RF pairs")
             rf_pairs += 1
             continue
 
-        if False and read1.reference_end > read2.reference_end:
-
-            # read1 passes read2.end, just softmask read1
-            # if cigar is complicated, just remove this read pair
-            if len(read1.cigar) > 1 or read1.cigar[0][0] != 0:
-                cerr("ERR: complicated cigar: %s" % read1.cigarstring)
-                invalid_pairs += 1
-                continue
-
-            # modify cigar
-            trim_size = read1.reference_end - read2.reference_end
-            read1.cigar = [ (0, read1.cigar[0][1] - trim_size), (4, trim_size)]
-
-        if False and read1.reference_start > read2.reference_start:
-            cexit('ERR: found another invalid read pairs')
-
         try:
+
             res = trimmer_func(read1, read2, primer_lookup, amplicon_counter)
+
         except BaseException as inst:
             raise inst
             print(inst)
             indel_pairs += 1
             continue
+
         if res is True:
             trimmed_pairs += 1
             #print(' 8< %s >8' % (read1.query_name))
@@ -429,6 +434,19 @@ def trim_primers(segments, primer_lookup, outfile, trimmer_func=None):
             continue
         else:
             raise RuntimeError('unknown trimmer_func() result')
+
+        # check if we need to softmask 3' of each read
+
+        if alignment_end(read1) > alignment_end(read2):
+            # ...>>>>>>>>>>>>>>>>>>>>>>
+            # ...<<<<<<<<<<<
+            pass
+
+        if alignment_start(read2) > alignment_start(read1):
+            #      >>>>>>>>>>>....
+            #  <<<<<<<<<<<<<<<....
+            pass
+
         outfile.write(read1)
         outfile.write(read2)
 
