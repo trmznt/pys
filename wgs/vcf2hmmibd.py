@@ -12,6 +12,7 @@ def init_argparser():
     p = argparse.ArgumentParser()
     p.add_argument('-o', '--outfile', default='hmmibd-genotype.txt')
     p.add_argument('-d', '--mindepth', type=int, default=1)
+    p.add_argument('-s', '--samplefile', default='')
     p.add_argument('-t', '--translationfile', default='')
     p.add_argument('--debug', default=False, action='store_true')
     p.add_argument('infile')
@@ -27,12 +28,27 @@ def read_chrom_translation(infile):
         d[tokens[0]] = int(tokens[1])
     return d
 
+
 def vcf2hmmibd(args):
+
+    sample_set = None
+    if args.samplefile:
+        with open(args.samplefile) as f_sample:
+            sample_set = set(filter(None, [x.strip() for x in f_sample]))
+        print(f'Reading {len(sample_set)} samples from {args.samplefile}')
 
     print(f'Reading VCF file: {args.infile}')
     vcf = allel.read_vcf(args.infile, fields=['samples', 'variants', 'calldata/DP', 'calldata/GT', 'calldata/AD'])
 
     samples = vcf['samples']
+    collected_samples = []
+    indices = []
+
+    if sample_set:
+        for i, s in enumerate(samples):
+            if s in sample_set:
+                collected_samples.append(s)
+                indices.append(i)
 
     # convert chrom name to integer
     trans_d = read_chrom_translation(args.translationfile)
@@ -41,6 +57,9 @@ def vcf2hmmibd(args):
 
     # create genotypes
     allele_depths = allel.GenotypeArray(vcf['calldata/AD'])
+    if sample_set:
+        allele_depths = np.take(allele_depths, indices, axis=1)
+
     genotypes = np.argmax(allele_depths, axis=2)
 
     # set for missing values or lower than mindepth
