@@ -11,6 +11,7 @@ def init_argparser():
     p.add_argument('-o', '--outfile', default='outtable.txt')
     p.add_argument('-t', '--outtarget', default='')
     p.add_argument('-f', '--field', default='GT')
+    p.add_argument('-e', '--encode', default='GT')
     p.add_argument('--debug', default=False, action='store_true')
     p.add_argument('infile')
     return p
@@ -59,7 +60,18 @@ def prepare_snp_indexes(target_positions, source_positions):
     return indexes, real_targets
 
 
-def vcf2barcode(args):
+def _ga2alt(g):
+    if g[0] < 0 or g[1] < 0:
+        return -1
+    elif g[0] == 0 and g[1] == 0:
+        return 0
+    elif g[0] > 0 or g[1] > 0:
+        return 1
+
+ga2alt = np.vectorize(_ga2alt)
+
+
+def vcf2table(args):
 
     bed = read_bedfile(args.bedfile)
     if len(bed['regions']) > 0:
@@ -85,6 +97,8 @@ def vcf2barcode(args):
     N = len(samples)
     chroms = vcf['variants/CHROM'][snp_indexes]
     positions = vcf['variants/POS'][snp_indexes]
+    ref = vcf['variants/REF'][snp_indexes]
+    alt = vcf['variants/ALT'][snp_indexes][:, 0]
     if 'variants/SNPEFF_GENE_NAME' in vcf:
         gene_names = vcf['variants/SNPEFF_GENE_NAME'][snp_indexes]
         aa_changes = vcf['variants/SNPEFF_AMINO_ACID_CHANGE'][snp_indexes]
@@ -95,8 +109,8 @@ def vcf2barcode(args):
     outf = open(args.outfile, 'w')
     outf.write('CHROM\t' + '\t'.join(chroms) + '\n')
     outf.write('POS\t' + '\t'.join(str(p) for p in positions) + '\n')
-    outf.write('REF\t' + '\t'.join(vcf['variants/REF']) + '\n')
-    outf.write('ALT\t' + '\t'.join(vcf['variants/ALT'][:,0]) + '\n')
+    outf.write('REF\t' + '\t'.join(ref) + '\n')
+    outf.write('ALT\t' + '\t'.join(alt) + '\n')
     if gene_names is not None:
         outf.write('GENE\t' + '\t'.join(gene_names) + '\n')
         outf.write('AACHANGE\t' + '\t'.join(aa_changes) + '\n')
@@ -104,11 +118,17 @@ def vcf2barcode(args):
     for n in range(N):
         outf.write(samples[n] + '\t')
         if args.field == 'GT':
-            ga = genotype_array[:,n][[snp_indexes]]
-            _, items = ga.get_display_items(len(snp_indexes), len(snp_indexes))
-            outf.write('\t'.join(items))
+            ga = genotype_array[:, n][[snp_indexes]]
+            if args.encode == 'GT':
+                _, items = ga.get_display_items(len(snp_indexes), len(snp_indexes))
+                outf.write('\t'.join(items))
+            elif args.encode == 'ALT':
+                tab = np.apply_along_axis(_ga2alt, 1, ga)
+                print(len(ga), len(tab))
+                outf.write('\t'.join([str(x) for x in tab]))
+                # np.savetxt(outf, tab, fmt='%d')  # , newline='\t')
         else:
-            np.savetxt(outf, genotype_array[:,n][snp_indexes], fmt='%d', newline='\t')
+            np.savetxt(outf, genotype_array[:, n][snp_indexes], fmt='%s', newline='\t')
         outf.write('\n')
 
     outf.close()
@@ -116,7 +136,7 @@ def vcf2barcode(args):
 
 
 def main(args):
-    vcf2barcode(args)
+    vcf2table(args)
 
 
 # this script can be run independently or through seqpy spcli
