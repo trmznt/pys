@@ -18,6 +18,7 @@ from seqpy.core.cfuncs import genoutils
 def init_argparser():
     p = arg_parser("Convert VCF to ratio of alternate ref dataset")
     p.add_argument('--autofilename', default=False, action='store_true')
+    p.add_argument('--funcotation', default=False, action='store_true')
     p.add_argument('--mindepth', default=1, type=int)
     p.add_argument('-o', '--outfile', default='outdata')
     p.add_argument('infile')
@@ -35,8 +36,9 @@ def vcf2ralt( args ):
     start_time = time.monotonic()
     vcfset = allel.read_vcf(args.infile,
             fields=['samples', 'variants/CHROM', 'variants/POS', 'variants/REF',
-                'variants/ALT', 'variants/SNPEFF_GENE_NAME',
-                'variants/SNPEFF_AMINO_ACID_CHANGE', 'calldata/AD'])
+                'variants/ID', 'variants/ALT', 'variants/SNPEFF_GENE_NAME',
+                'variants/SNPEFF_AMINO_ACID_CHANGE', 'variants/FUNCOTATION',
+                'calldata/AD'])
     cerr('[I: read %s site, %s samples in %d secs]' % (len(vcfset['variants/CHROM']),
          len(vcfset['samples']), time.monotonic() - start_time))
 
@@ -53,16 +55,34 @@ def vcf2ralt( args ):
     # write position
     # position file is:
     # CHROM POS REF ALT
+
+    if args.funcotation:
+        genes = []
+        aachanges = []
+        effects = []
+        for e in vcfset['variants/FUNCOTATION']:
+            tokens = e[0][1:-1].split('|')
+            genes.append(tokens[0])
+            effects.append(tokens[5])
+            aachanges.append(tokens[18][2:])
+    else:
+        genes = vcfset['variants/SNPEFF_GENE_NAME']
+        aachanges = vcfset['variants/SNPEFF_GENE_NAME']
+        effects = [''] * len(genes)
+
     cerr('[I: writing position file]')
     with open(pos_file, 'w') as outfile:
-        outfile.write('CHROM\tPOS\tREF\tALT\tGENE\tAACHANGE\n')
-        for (chrom, pos, ref, alt, gene, aachange) in zip(
+        outfile.write('CHROM\tPOS\tREF\tALT\tGENE\tAACHANGE\tID\n')
+        for (chrom, pos, ref, alt, gene, aachange, snpid) in zip(
                 vcfset['variants/CHROM'], vcfset['variants/POS'],
                 vcfset['variants/REF'], vcfset['variants/ALT'],
-                vcfset['variants/SNPEFF_GENE_NAME'],
-                vcfset['variants/SNPEFF_AMINO_ACID_CHANGE']):
-            outfile.write('%s\t%d\t%s\t%s\t%s\t%s\n' %
-                (chrom, pos, ref, alt[0], gene, aachange))
+                #vcfset['variants/SNPEFF_GENE_NAME'],
+                #vcfset['variants/SNPEFF_AMINO_ACID_CHANGE'],
+                genes,
+                aachanges,
+                vcfset['variants/ID']):
+            outfile.write('%s\t%d\t%s\t%s\t%s\t%s\t%s\n' %
+                (chrom, pos, ref, alt[0], gene, aachange, snpid))
 
     # write genotype by converting the genotype
     cerr('[I: writing genotype file]')
