@@ -87,6 +87,8 @@ def ralt2ralt( args ):
 
     if args.includesample:
         included_samples = np.loadtxt(args.includesample, dtype=str)
+        if len(included_samples[0]) > 1:
+            included_samples = included_samples[:,0]
         included_indexes = np.where(np.array(samples) == included_samples[:,None])[1]
         cerr('[I - including {} | {} out of {} samples]'.format(
             len(included_samples), len(included_indexes), len(samples)))
