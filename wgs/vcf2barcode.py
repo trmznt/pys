@@ -15,6 +15,8 @@ def init_argparser():
                    help='The ratio of allele depth over total depth to call hets. '
                    'Value of 0.67 means if depth_of_major_allele/total_depth is < 0.67, '
                    'the genotype will be N.')
+    p.add_argument('--usevcfpos', default=False, action='store_true',
+                   help='Use vcf for outtarget, ie chrom, pos, ref, alt')
     p.add_argument('--debug', default=False, action='store_true')
     p.add_argument('infile')
     return p
@@ -28,19 +30,22 @@ def read_bedfile(bedfile):
             if line.startswith('#'):
                 continue
             tokens = line.strip().split()
+            if len(tokens) == 2:
+                bed['snps'].append((tokens[0], int(tokens[1]), 'snp'))
+                continue
             start_pos, end_pos = int(tokens[1]), int(tokens[2])
             span = end_pos - start_pos
             if span <= 0:
                 raise ValueError(f'BED file improper value: {tokens[0]}, {start_pos}, {end_pos}')
-            if end_pos - start_pos == 1:
+            if span == 1:
                 bed['snps'].append((tokens[0], end_pos, tokens[3]))
-            elif end_pos - start_pos > 1:
+            elif span > 1:
                 bed['regions'].append((tokens[0], start_pos, end_pos, tokens[3]))
 
     return bed
 
 
-def prepare_snp_indexes(target_positions, source_positions):
+def prepare_snp_indexes(target_positions, source_positions, snp_refalt):
     indexes = []
     real_targets = []
 
@@ -50,11 +55,18 @@ def prepare_snp_indexes(target_positions, source_positions):
 
     for p in target_positions:
         try:
-            indexes.append(source_positions.index((p[0], p[1])))
-            real_targets.append(p)
+            idx = source_positions.index((p[0], p[1]))
+            indexes.append(idx)
+            if snp_refalt is not None:
+                real_targets.append((source_positions[idx][0], source_positions[idx][1],
+                                    snp_refalt[idx][0], snp_refalt[idx][1][0]))
+            else:
+                real_targets.append(p)
         except ValueError:
             print(f'Warning: missing position: {p[0]} {p[1]}')
             indexes.append(-1)
+            if snp_refalt is not None:
+                real_targets.append((p[0], p[1], 'X', 'X'))
             real_targets.append(p)
 
     return indexes, real_targets
@@ -72,7 +84,8 @@ def vcf2barcode(args):
 
     # SNPs
     snp_positions = list(zip(vcf['variants/CHROM'], vcf['variants/POS']))
-    snp_indexes, target_positions = prepare_snp_indexes(bed['snps'], snp_positions)
+    snp_refalt = list(zip(vcf['variants/REF'], vcf['variants/ALT'])) if args.usevcfpos else None
+    snp_indexes, target_positions = prepare_snp_indexes(bed['snps'], snp_positions, snp_refalt)
 
     # adding mmissing data at the end of all array data to accomdate missing positions, ie. -1 indexing position
     calldata_ad = vcf['calldata/AD']
@@ -127,8 +140,13 @@ def vcf2barcode(args):
     # write target position
     if args.outtarget:
         with open(args.outtarget, 'w') as fout:
+            if args.usevcfpos:
+                fout.write('CHROM\tPOS\tREF\tALT\n')
             for p in target_positions:
-                fout.write(f'{p[0]}\t{p[1]}\t{p[2]}\n')
+                if args.usevcfpos:
+                    fout.write(f'{p[0]}\t{p[1]}\t{p[2]}\t{p[3]}\n')
+                else:
+                    fout.write(f'{p[0]}\t{p[1]}\t{p[2]}\n')
         print(f'Target positions written to {args.outtarget}')
 
 
