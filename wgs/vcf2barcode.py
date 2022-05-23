@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import allel
 import numpy as np
 
@@ -131,9 +132,29 @@ def vcf2barcode(args):
         # input()
 
     # write to text file
-    with open(args.outfile, 'w') as fout:
-        for sample_code, barcode in zip(samples, barcodes):
-            fout.write(f'{sample_code}\t{barcode}\n')
+    match os.path.splitext(args.outfile)[1]:
+
+        case '.txt':
+            with open(args.outfile, 'w') as fout:
+                for sample_code, barcode in zip(samples, barcodes):
+                    fout.write(f'{sample_code}\t{barcode}\n')
+
+        case '.csv' | '.tsv' as ext:
+            sep = ',' if ext == '.csv' else '\t'
+            header = ['SAMPLES'] + [f'{p[0]}:{p[1]}' for p in target_positions]
+            with open(args.outfile, 'w') as fout:
+                # write header
+                fout.write(sep.join(header))
+                fout.write('\n')
+                # write content
+                for sample_code, barcode in zip(samples, barcodes):
+                    fout.write(sample_code)
+                    fout.write(sep)
+                    fout.write(sep.join(barcodes))
+                    fout.write('\n')
+
+        case _ as ext:
+            raise RuntimeError(f'Please use extention .txt, .csv or .tsv in output filename, instead of {ext}')
 
     print(f'Barcodes (L={len(snp_indexes)}) written to {args.outfile}')
 
