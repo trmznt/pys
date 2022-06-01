@@ -70,7 +70,7 @@ def cmheatmap(args):
     if truefile is None and pred_column is None:
         cexit('ERR - either set truefile using --truefile or set true column')
 
-    df_pred = pd.read_csv(infile)
+    df_pred = pd.read_csv(infile, sep=None)
     if truefile:
         if ':' in truefile:
             truefile, true_column = truefile.split(':', 1)
