@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env spcli
 
 import argparse
 import allel
@@ -11,6 +11,8 @@ def init_argparser():
     p.add_argument('-s', '--samplefile', default='')
     p.add_argument('-o', '--outfile', default='outfile.txt')
     p.add_argument('-t', '--outtarget', default='')
+    p.add_argument('--useGT', default=False, action='store_true',
+                   help='Use GT field for genotype')
     p.add_argument('--mindepth', type=int, default=5)
     p.add_argument('--hetratio', type=float, default=-1,
                    help='The ratio of allele depth over total depth to call hets. '
@@ -93,19 +95,31 @@ def vcf2realmccoil(args):
 
     print(f'Reading {len(samples)} samples and {len(snp_positions)} SNPs from {args.infile}')
 
-    # adding mmissing data at the end of all array data to accomdate missing positions, ie. -1 indexing position
-    calldata_ad = vcf['calldata/AD']
-    _, d1, d2 = calldata_ad.shape
-    allele_depths = allel.GenotypeArray(np.append(calldata_ad, np.full((1, d1, d2), -1, dtype=np.int16), axis=0))
-    refs = np.append(vcf['variants/REF'], ['X'])[snp_indexes]
-    alts = np.append(vcf['variants/ALT'], [['X', '', '']], axis=0)[snp_indexes]
-    N, L = len(samples), len(snp_indexes)
+    if args.useGT:
+        calldata_gt = vcf['calldata/GT']
+    else:
+        calldata_ad = vcf['calldata/AD']
+        _, d1, d2 = calldata_ad.shape
+        allele_depths = allel.GenotypeArray(np.append(calldata_ad, np.full((1, d1, d2), -1, dtype=np.int16), axis=0))
+
+    N = len(samples)
     all_alleles = []
     selected_samples = []
 
     for n, s in enumerate(samples):
 
         if sample_set is not None and s not in sample_set:
+            continue
+
+        if args.useGT:
+
+            # create alleles based on GT field
+            alleles = calldata_gt[snp_indexes, n].sum(axis=1)
+            alleles = alleles / 2
+            alleles[alleles < 0] = -1
+
+            all_alleles.append(alleles)
+            selected_samples.append(s)
             continue
 
         sample_depths = allele_depths[snp_indexes, n]
