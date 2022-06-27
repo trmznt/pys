@@ -15,12 +15,19 @@ def init_argparser():
     p.add_argument('-o', '--outfile')
     p.add_argument('--outtarget', default='')
     p.add_argument('--useGT', default=False, action='store_true')
-    p.add_argument('--mindepth', default=5, type=int)
+    p.add_argument('--mindepth', default=5, type=int,
+                   help='Cut-off depth to be called missing variant, eg. mindepth = 5 '
+                   'indicates variants with total depth < 5 will be mark as missing.')
     p.add_argument('--hetratio', default=0.67, type=float,
                    help='The ratio of allele depth over total depth to call hets. '
                    'Value of 0.67 means if depth_of_major_allele/total_depth is < 0.67, '
                    'the genotype will be N. Valid values are between 0.5 to 1.0. '
                    'Set to -1 for obtaining major allele')
+    p.add_argument('--minaltdepth', default=2, type=int,
+                   help='Threshold value for minor depth of a variant to be called heterozygote, '
+                   'eg. minaltdepth = 2 indicates that variants with alternate reads >= 2 will be '
+                   'marked as heterozygote, depending on the hetratio. Use hetratio = 0.999 if '
+                   'hetratio is to be ignored.')
     p.add_argument('infile')
 
     return p
