@@ -80,6 +80,11 @@ def zarr2barcode(args):
     N, L = df_barcode.shape
     cerr(f'[Barcode (L={L-1};N={N}) is written to {args.outfile}]')
 
+    if args.outtarget:
+        target_posdf = posutils.posframe_from_dataset(ds)
+        target_posdf.to_csv(args.outtarget, sep='\t', index=False)
+        cerr(f'[Target position is written to {args.outtarget}]')
+
 
 def main(args):
     zarr2barcode(args)
