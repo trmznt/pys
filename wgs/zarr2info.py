@@ -1,11 +1,9 @@
 #!/usr/bin/env spcli
 
 import argparse
-import os
 
 from seqpy import cerr
-from seqpy.core.sgk import sgio, sgutils
-from seqpy.core.bioio import posutils, tabutils
+from seqpy.core.sgk import sgio
 
 
 def init_argparser():
