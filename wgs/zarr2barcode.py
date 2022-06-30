@@ -3,6 +3,8 @@
 import argparse
 import os
 
+import pandas as pd
+
 from seqpy import cerr
 from seqpy.core.sgk import sgio, sgutils
 from seqpy.core.bioio import posutils, tabutils
@@ -14,6 +16,7 @@ def init_argparser():
 
     p.add_argument('-o', '--outfile')
     p.add_argument('--outtarget', default='')
+    p.add_argument('--samplefile', default='')
     p.add_argument('--useGT', default=False, action='store_true')
     p.add_argument('--mindepth', default=5, type=int,
                    help='Cut-off depth to be called missing variant, eg. mindepth = 5 '
@@ -48,6 +51,12 @@ def zarr2barcode(args):
         ds = posdf.pos.sel_dataset(ds)
 
     # if need to select samples, performed here
+    if args.samplefile:
+        orig_N = ds.dims['samples']
+        sample_df = pd.read_table(args.samplefile, sep=None, header=None, engine='python')
+        ds = ds.sel(samples=ds.sample_id.isin(sample_df.iloc[0]))
+        curr_N = ds.dims['samples']
+        cerr(f'[Subsetting the samples from {orig_N} to {curr_N}]')
 
     # convert using hetratio
 
