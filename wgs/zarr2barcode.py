@@ -47,7 +47,7 @@ def zarr2barcode(args):
     ds = sgio.load_dataset(args.infile)
 
     # select SNPs
-    if posdf:
+    if posdf is not None:
         ds = posdf.pos.sel_dataset(ds)
 
     # if need to select samples, performed here
