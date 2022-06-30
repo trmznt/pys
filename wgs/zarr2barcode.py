@@ -54,7 +54,7 @@ def zarr2barcode(args):
     if args.samplefile:
         orig_N = ds.dims['samples']
         sample_df = pd.read_table(args.samplefile, sep=None, header=None, engine='python')
-        ds = ds.sel(samples=ds.sample_id.isin(sample_df.iloc[0]))
+        ds = ds.sel(samples=ds.sample_id.isin(sample_df.iloc[:, 0].to_list()))
         curr_N = ds.dims['samples']
         cerr(f'[Subsetting the samples from {orig_N} to {curr_N}]')
 
