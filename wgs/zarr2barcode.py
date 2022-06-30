@@ -53,7 +53,7 @@ def zarr2barcode(args):
     # if need to select samples, performed here
     if args.samplefile:
         orig_N = ds.dims['samples']
-        sample_df = pd.read_table(args.samplefile, sep=None, header=None, engine='python')
+        sample_df = pd.read_table(args.samplefile, header=None)
         ds = ds.sel(samples=ds.sample_id.isin(sample_df.iloc[:, 0].to_list()))
         curr_N = ds.dims['samples']
         if curr_N != len(sample_df):
