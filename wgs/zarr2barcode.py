@@ -56,6 +56,11 @@ def zarr2barcode(args):
         sample_df = pd.read_table(args.samplefile, sep=None, header=None, engine='python')
         ds = ds.sel(samples=ds.sample_id.isin(sample_df.iloc[:, 0].to_list()))
         curr_N = ds.dims['samples']
+        if curr_N != len(sample_df):
+            curr_samples = set(ds.sample_id.values)
+            sel_samples = set(sample_df.iloc[:, 0])
+            diff_samples = sel_samples - curr_samples
+            raise ValueError(f'Samples not found: {diff_samples}')
         cerr(f'[Subsetting the samples from {orig_N} to {curr_N}]')
 
     # convert using hetratio
