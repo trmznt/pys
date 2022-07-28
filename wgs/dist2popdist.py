@@ -75,10 +75,10 @@ def dist2popdist( args ):
     with open(args.outfile + '.popdxy.txt','wt') as outfile:
         # write dxy
         outfile.write( '%s\n' % '\t'.join( group_keys ) )
-        np.savetxt(outfile, M, delimiter='\t', fmt='%4.3f')
+        np.savetxt(outfile, M, delimiter='\t', fmt='%6.5f')
 
     with open(args.outfile + '.popdist.txt', 'wt') as outfile:
         # write distance
         outfile.write( '%s\n' % '\t'.join( group_keys ) )
-        np.savetxt(outfile, P, delimiter='\t', fmt='%4.3f')
+        np.savetxt(outfile, P, delimiter='\t', fmt='%6.5f')
 
