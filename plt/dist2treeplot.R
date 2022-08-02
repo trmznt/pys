@@ -31,7 +31,11 @@ option.list <- list(
               help = "Clustering method (Default: Neighbor joining).
                  Choices are: \"nj\", \"upgma\"",
               default = "nj")
-               )
+               ),
+  make_option("--cex",
+              help = "Font size for leaf label (Default: 0.7)",
+              type = "float",
+              default = 0.7)
 parser <- OptionParser(usage = "%prog [options] distance",
                        option_list = option.list)
 args <- parse_args(parser, positional_arguments = 1)
@@ -111,7 +115,7 @@ use.label <- args$options$label
 plot.phylo(tree, type = phylo.type, show.tip.label = use.label,
            tip.color = tip.colours, lab4ut = "axial",
            edge.color = edge.colours, edge.width = 0.5,
-           cex = 0.35, rotate.tree = 90, no.margin = TRUE)
+           cex = args$options$cex, rotate.tree = 90, no.margin = TRUE)
 
 if (!is.null(args$options$colour) && !is.null(args$options$legend)) {
   legends <- read.delim(args$options$legend)
