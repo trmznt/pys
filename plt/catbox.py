@@ -25,7 +25,10 @@ def init_argparser():
     parser.add_argument('--aspect', type=int, default=3)
     parser.add_argument('--height', type=float, default=-1)
     parser.add_argument('--order', default=None, help="File containing order of x axis")
+    parser.add_argument('--statsummary', default='', help='Add stat summary, group by this column')
     parser.add_argument('--outplot', default='outplot.pdf')
+    parser.add_argument('--palette', default='muted',
+                        help='Available colour palette: Paired pastel')
     parser.add_argument('infile', nargs='+')
 
     return parser
@@ -80,6 +83,18 @@ def plot_accuracies(args):
 
     data = read_infiles(args)
 
+    if args.statsummary:
+
+        cerr(f'[Adding stats grouped by {args.statsummary}]')
+
+        group_index = [args.statsummary, args.hue] if args.hue else [args.statsummary]
+        group_columns = group_index + [args.variables]
+
+        df = data[group_columns].groupby(group_index).agg(['median', 'min']).stack().reset_index()
+        df.rename(columns={'level_2': args.labelcolumn}, inplace=True)
+
+        data = pd.concat([data, df], ignore_index=True)
+
     # filter data
     if args.method:
         data = data[data['METHOD'] == args.method]
@@ -101,6 +116,8 @@ def plot_accuracies(args):
 
     if args.order:
         order = open(args.order).read().split('\n')
+        if args.statsummary:
+            order += ['median', 'min']
     else:
         order = None
 
@@ -111,7 +128,7 @@ def plot_accuracies(args):
         cerr(f'[I - melted variables: {melted}')
         data = drop_dataframe(data, variables, args.labelcolumn, labels).melt(melted)
 
-    sns.set_palette('Paired')
+    sns.set_palette(args.palette)
 
     if labels is None:
         if args.height > 0:
@@ -138,13 +155,15 @@ def plot_accuracies(args):
 
     fig = plots.fig
 
-    #import IPython; IPython.embed()
+    # import IPython; IPython.embed()
 
     # this will ensure that labels for x-axis are shown, but currently reposition the legend as well
-    #fig.tight_layout(w_pad=5)
+    # fig.tight_layout(w_pad=5)
     fig.savefig(args.outplot, dpi=300, bbox_inches='tight')
 
 
 def main(args):
 
     plot_accuracies(args)
+
+# EOF
