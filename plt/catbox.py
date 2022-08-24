@@ -26,9 +26,15 @@ def init_argparser():
     parser.add_argument('--height', type=float, default=-1)
     parser.add_argument('--order', default=None, help="File containing order of x axis")
     parser.add_argument('--statsummary', default='', help='Add stat summary, group by this column')
-    parser.add_argument('--outplot', default='outplot.pdf')
     parser.add_argument('--palette', default='muted',
                         help='Available colour palette: Paired pastel')
+
+    parser.add_argument('-i', '--interactive', default=False, action='store_true',
+                        help='Drop to IPython interactive session after before exit.')
+
+    parser.add_argument('--outtable', default='')
+    parser.add_argument('--outplot', default='outplot.pdf')
+
     parser.add_argument('infile', nargs='+')
 
     return parser
@@ -82,6 +88,32 @@ def read_infiles(args):
 def plot_accuracies(args):
 
     data = read_infiles(args)
+
+    if args.outtable:
+
+        # write numbers to tables
+
+        group_index = [args.labelcolumn, args.hue] if args.hue else [args.labelcolumn]
+        group_columns = group_index + [args.variables]
+
+        df = data[group_columns].groupby(group_index).agg(['median', 'min']).stack().reset_index()
+        # df now is:
+        #           CLASS       MODEL level_2       MCC
+        #0    Afghanistan        BR38  median  0.834963
+        #1    Afghanistan        BR38     min  0.361357
+        #2    Afghanistan       GEO33  median  0.849747
+        #3    Afghanistan       GEO33     min  0.579221
+        #4    Afghanistan  GEO33+BR38  median  0.946015
+        #..           ...         ...     ...       ...
+        #289      Vietnam  GEO50+BR38     min  0.212224
+        #290      Vietnam       GEO55  median  0.756743
+        #291      Vietnam       GEO55     min  0.277208
+        #292      Vietnam  GEO55+BR38  median  0.756743
+        #293      Vietnam  GEO55+BR38     min  0.429472
+
+        #df.rename(columns={'level_2': args.labelcolumn}, inplace=True)
+        df_med = df[df['level_2'] == 'median'].pivot(index='CLASS', columns='MODEL', values='MCC')
+        df_min = df[df['level_2'] == 'min'].pivot(index='CLASS', columns='MODEL', values='MCC')
 
     if args.statsummary:
 
