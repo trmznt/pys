@@ -28,6 +28,8 @@ def init_argparser():
     parser.add_argument('--statsummary', default='', help='Add stat summary, group by this column')
     parser.add_argument('--palette', default='muted',
                         help='Available colour palette: Paired pastel')
+    parser.add_argument('--rotation', type=int, default=60,
+                        help='Label rotation in degree (default: 60)')
 
     parser.add_argument('-i', '--interactive', default=False, action='store_true',
                         help='Drop to IPython interactive session after before exit.')
@@ -98,32 +100,41 @@ def plot_accuracies(args):
 
         df = data[group_columns].groupby(group_index).agg(['median', 'min']).stack().reset_index()
         # df now is:
-        #           CLASS       MODEL level_2       MCC
-        #0    Afghanistan        BR38  median  0.834963
-        #1    Afghanistan        BR38     min  0.361357
-        #2    Afghanistan       GEO33  median  0.849747
-        #3    Afghanistan       GEO33     min  0.579221
-        #4    Afghanistan  GEO33+BR38  median  0.946015
-        #..           ...         ...     ...       ...
-        #289      Vietnam  GEO50+BR38     min  0.212224
-        #290      Vietnam       GEO55  median  0.756743
-        #291      Vietnam       GEO55     min  0.277208
-        #292      Vietnam  GEO55+BR38  median  0.756743
-        #293      Vietnam  GEO55+BR38     min  0.429472
+        #            CLASS       MODEL level_2       MCC
+        # 0    Afghanistan        BR38  median  0.834963
+        # 1    Afghanistan        BR38     min  0.361357
+        # 2    Afghanistan       GEO33  median  0.849747
+        # 3    Afghanistan       GEO33     min  0.579221
+        # 4    Afghanistan  GEO33+BR38  median  0.946015
+        # ..           ...         ...     ...       ...
+        # 289      Vietnam  GEO50+BR38     min  0.212224
+        # 290      Vietnam       GEO55  median  0.756743
+        # 291      Vietnam       GEO55     min  0.277208
+        # 292      Vietnam  GEO55+BR38  median  0.756743
+        # 293      Vietnam  GEO55+BR38     min  0.429472
 
-        #df.rename(columns={'level_2': args.labelcolumn}, inplace=True)
+        # df.rename(columns={'level_2': args.labelcolumn}, inplace=True)
         df_med = df[df['level_2'] == 'median'].pivot(index='CLASS', columns='MODEL', values='MCC')
         df_min = df[df['level_2'] == 'min'].pivot(index='CLASS', columns='MODEL', values='MCC')
+
+        df_med.reset_index().to_csv(args.outtable + '-med.tsv', index=False, sep='\t')
+        df_min.reset_index().to_csv(args.outtable + '-min.tsv', index=False, sep='\t')
 
     if args.statsummary:
 
         cerr(f'[Adding stats grouped by {args.statsummary}]')
 
+        stacked_column = 'level_2'
         group_index = [args.statsummary, args.hue] if args.hue else [args.statsummary]
         group_columns = group_index + [args.variables]
 
+        if args.row:
+            group_index.append(args.row)
+            group_columns.append(args.row)
+            stacked_column = 'level_3'
+
         df = data[group_columns].groupby(group_index).agg(['median', 'min']).stack().reset_index()
-        df.rename(columns={'level_2': args.labelcolumn}, inplace=True)
+        df.rename(columns={stacked_column: args.labelcolumn}, inplace=True)
 
         data = pd.concat([data, df], ignore_index=True)
 
@@ -182,7 +193,8 @@ def plot_accuracies(args):
         axis.set_ylabel(title, fontsize='x-large')
 
     # rotate x ticks
-    [(x.set_rotation(60), x.set_fontsize(x.get_fontsize() * 1.5)) for x in plots.axes[-1][0].get_xticklabels()]
+    [(x.set_rotation(args.rotation), x.set_fontsize(x.get_fontsize() * 1.5))
+        for x in plots.axes[-1][0].get_xticklabels()]
     plots.axes[-1][0].set_xlabel('')
 
     fig = plots.fig
@@ -192,6 +204,10 @@ def plot_accuracies(args):
     # this will ensure that labels for x-axis are shown, but currently reposition the legend as well
     # fig.tight_layout(w_pad=5)
     fig.savefig(args.outplot, dpi=300, bbox_inches='tight')
+
+    if args.interactive:
+        import IPython
+        IPython.embed()
 
 
 def main(args):
