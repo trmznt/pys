@@ -195,6 +195,9 @@ def plot_accuracies(args):
     # rotate x ticks
     [(x.set_rotation(args.rotation), x.set_fontsize(x.get_fontsize() * 1.5))
         for x in plots.axes[-1][0].get_xticklabels()]
+    plots.axes[-1][0].set_xticklabels(
+        plots.axes[-1][0].get_xticklabels(),
+        horizontalalignment='right')
     plots.axes[-1][0].set_xlabel('')
 
     fig = plots.fig
