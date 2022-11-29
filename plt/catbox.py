@@ -95,8 +95,14 @@ def plot_accuracies(args):
 
         # write numbers to tables
 
+        stacked_column = 'level_2'
         group_index = [args.labelcolumn, args.hue] if args.hue else [args.labelcolumn]
         group_columns = group_index + [args.variables]
+
+        if args.row:
+            group_index.append(args.row)
+            group_columns.append(args.row)
+            stacked_column = 'level_3'
 
         df = data[group_columns].groupby(group_index).agg(['median', 'min']).stack().reset_index()
         # df now is:
@@ -114,11 +120,32 @@ def plot_accuracies(args):
         # 293      Vietnam  GEO55+BR38     min  0.429472
 
         # df.rename(columns={'level_2': args.labelcolumn}, inplace=True)
-        df_med = df[df['level_2'] == 'median'].pivot(index='CLASS', columns='MODEL', values='MCC')
-        df_min = df[df['level_2'] == 'min'].pivot(index='CLASS', columns='MODEL', values='MCC')
 
-        df_med.reset_index().to_csv(args.outtable + '-med.tsv', index=False, sep='\t')
-        df_min.reset_index().to_csv(args.outtable + '-min.tsv', index=False, sep='\t')
+        if args.row:
+            for val in df[args.row].unique():
+                df2 = df[df[args.row] == val]
+                df2_med = df2[df2[stacked_column] == 'median'].pivot(index='CLASS',
+                                                                     columns='MODEL',
+                                                                     values='MCC')
+                df2_min = df2[df2[stacked_column] == 'min'].pivot(index='CLASS',
+                                                                  columns='MODEL',
+                                                                  values='MCC')
+
+                df2_med.reset_index().to_csv(f'{args.outtable}-{val}-med.tsv',
+                                             index=False, sep='\t')
+                df2_min.reset_index().to_csv(f'{args.outtable}-{val}-min.tsv',
+                                             index=False, sep='\t')
+
+        else:
+            df_med = df[df[stacked_column] == 'median'].pivot(index='CLASS',
+                                                              columns='MODEL',
+                                                              values='MCC')
+            df_min = df[df['level_2'] == 'min'].pivot(index='CLASS',
+                                                      columns='MODEL',
+                                                      values='MCC')
+
+            df_med.reset_index().to_csv(args.outtable + '-med.tsv', index=False, sep='\t')
+            df_min.reset_index().to_csv(args.outtable + '-min.tsv', index=False, sep='\t')
 
     if args.statsummary:
 
