@@ -16,7 +16,8 @@ def init_argparser():
 
     p.add_argument('-o', '--outfile')
     p.add_argument('--outtarget', default='')
-    p.add_argument('--samplefile', default='')
+    p.add_argument('--samplefile', default='',
+                   help='A headerless text file containing sample code per single line')
     p.add_argument('--useGT', default=False, action='store_true')
     p.add_argument('--mindepth', default=5, type=int,
                    help='Cut-off depth to be called missing variant, eg. mindepth = 5 '
