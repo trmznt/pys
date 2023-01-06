@@ -6,8 +6,7 @@ import os
 import pandas as pd
 
 from seqpy import cerr
-from seqpy.core.sgk import sgio, sgutils
-from seqpy.core.bioio import posutils, tabutils
+from seqpy.core.bioio import posutils
 
 
 def init_argparser():
@@ -18,6 +17,10 @@ def init_argparser():
     p.add_argument('--outtarget', default='')
     p.add_argument('--samplefile', default='',
                    help='A headerless text file containing sample code per single line')
+    p.add_argument('-m', '--metafile', default='',
+                   help='Metafile containing columns to be added to output file, use eg. '
+                   'metafile.tsv:SAMPLE,COUNTRY,REGION to add COUNTRY and REGION to output '
+                   'using SAMPLE as index')
     p.add_argument('--useGT', default=False, action='store_true')
     p.add_argument('--mindepth', default=5, type=int,
                    help='Cut-off depth to be called missing variant, eg. mindepth = 5 '
@@ -38,6 +41,9 @@ def init_argparser():
 
 
 def zarr2tabular(args):
+
+    from seqpy.core.sgk import sgio, sgutils
+    from seqpy.core.bioio import tabutils
 
     # if providede, read posfile
     posdf = None
@@ -64,11 +70,18 @@ def zarr2tabular(args):
             raise ValueError(f'Samples not found: {diff_samples}')
         cerr(f'[Subsetting the samples from {orig_N} to {curr_N}]')
 
+    # prepare metadata to be added to output file
+    if args.metafile:
+        samples = ds.sample_id.values
+        sample_df, errs = tabutils.join_metafile(samples, args.metafile, percenttag=True)
+    else:
+        sample_df = None
+
     # convert using hetratio
 
     #import IPython; IPython.embed()
 
-    cerr('[Converting to barcode...]')
+    cerr('[Converting alleles to tabular format...]')
     variants = sgutils.get_alleles(
         sgutils._allele_for_barcode,
         ds,
@@ -77,24 +90,32 @@ def zarr2tabular(args):
         useGT=args.useGT
     )
 
-    df_barcode = tabutils.dataframe_from_variants(ds, variants)
+    tabular_df = tabutils.dataframe_from_variants(ds, variants)
 
     # saving to ouftile
+
+    N, L = tabular_df.shape
+
+    # add additional metadata, which already sorted based on samples
+    if sample_df is not None:
+
+        # assume 1st columns of tabular_df is SAMPLE, wchich can be replaced by sample_df
+        tabular_df = pd.concat([sample_df, tabular_df.iloc[:, 1:]], axis=1)
+
     match ext := os.path.splitext(args.outfile)[1].lower():
 
         case '.tsv' | '.csv':
-            df_barcode.to_csv(args.outfile, sep='\t' if ext == '.tsv' else ',', index=False)
+            tabular_df.to_csv(args.outfile, sep='\t' if ext == '.tsv' else ',', index=False)
 
         case '.txt':
             with open(args.outfile, 'w') as fout:
                 fout.write('#BAR\tSAMPLE\n')
-                for idx, row in df_barcode.iterrows():
+                for idx, row in tabular_df.iterrows():
                     fout.write(''.join(row[1:]) + '\t' + row[0] + '\n')
 
         case _:
             raise ValueError('other extension is not implemented yet')
 
-    N, L = df_barcode.shape
     cerr(f'[Barcode (L={L-1};N={N}) is written to {args.outfile}]')
 
     if args.outtarget:
