@@ -3,6 +3,7 @@
 from seqpy import cout, cerr, cexit, gzopen
 from seqpy.cmds import arg_parser
 from seqpy.core.bioio import metautils, tabutils
+import sys
 
 
 def init_argparser():
@@ -41,8 +42,11 @@ def tab2anno(args):
         columns = columns.split(',')
 
     joined_df = meta_df.meta.join_to_samples(samples, columns)
-    cerr(f'Obtaining {len(joined_df)} samples after joined with metadata '
-         f'{metafile}')
+    if len(joined_df) != len(samples):
+        diff = set(samples) - set(joined_df['SAMPLE'])
+        cerr('The following samples do not have metadata:')
+        cerr(f'{diff}')
+        sys.exit(1)
 
     # get spec file and its specs
     specfile, column = args.specfile.split(':')
@@ -51,8 +55,11 @@ def tab2anno(args):
                          f'{specfile}:COLUMN_NAME')
     spec_df = tabutils.read_file(specfile)
     joined_df = joined_df.meta.join(spec_df, column)
-    cerr(f'Obtaining {len(joined_df)} samples after joined with spec file '
-         f'{specfile}')
+    if len(joined_df) != len(samples):
+        diff = set(samples) - set(joined_df['SAMPLE'])
+        cerr('The following samples do not have metadata:')
+        cerr(f'{diff}')
+        sys.exit(1)
 
     tabutils.write_file(args.outfile, joined_df)
     cerr(f'Output written to {args.outfile}')
