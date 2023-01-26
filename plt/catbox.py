@@ -5,8 +5,6 @@
 """
 
 import sys
-import pandas as pd
-import seaborn as sns
 
 from seqpy import cout, cerr, cexit
 from seqpy.cmds import arg_parser
@@ -68,6 +66,8 @@ def calculate_required_aspect(data, label_column):
 
 def read_infiles(args):
 
+    import pandas as pd
+
     dataframes = []
     for infile in args.infile:
 
@@ -88,6 +88,9 @@ def read_infiles(args):
 
 
 def plot_accuracies(args):
+
+    import pandas as pd
+    import seaborn as sns
 
     data = read_infiles(args)
 
