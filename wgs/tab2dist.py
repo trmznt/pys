@@ -6,7 +6,7 @@ import pandas as pd
 
 from seqpy import cerr
 from seqpy.core.bioio import tabutils
-from numba import njit
+from numba import njit, prange, int_, float32
 from numba_progress import ProgressBar
 
 
@@ -19,9 +19,9 @@ def init_argparser():
     return p
 
 
-@njit(nogil=True)
+@njit(nogil=True, parallel=True)
 def njit_loop_calc_dist(allele_m, dist_m, n, allele_length, progress_proxy):
-    for i in range(n):
+    for i in prange(n):
         r_i = allele_m[i]
         for j in range(i - 1):
             d = 0
@@ -36,7 +36,9 @@ def njit_loop_calc_dist(allele_m, dist_m, n, allele_length, progress_proxy):
                 if x_k != y_k:
                     d += 1
             dist_m[i, j] = dist_m[j, i] = (d / c)
-            progress_proxy.update(1)
+            if (j + 1) % 200 == 0:
+                progress_proxy.update(200)
+        progress_proxy.update(j % 200)
 
 
 def calc_dist(allele_df):
