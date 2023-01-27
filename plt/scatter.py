@@ -18,6 +18,8 @@ def init_argparser():
                    help="Column name to used to differentiate data points")
     p.add_argument('--dpi', type=int, default=600)
     p.add_argument('--jitter', type=float, default=0.005)
+    p.add_argument('--fontscale', type=float, default=1,
+                   help="font scale, default=1")
     p.add_argument('-s', '--size', type=int, default=10,
                    help="size of markers")
     p.add_argument('-w', '--width', type=float, default=8.0,
@@ -60,6 +62,8 @@ def scatter(args):
 
     data_axes = list(combinations(columns, 2))
     N = len(data_axes)
+
+    sns.set_theme(font_scale=args.fontscale, style='ticks')
 
     fig = plt.figure(figsize=(args.width + (2.5 if args.legend_out else 0),
                               args.width * N), dpi=args.dpi)
