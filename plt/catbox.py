@@ -20,8 +20,9 @@ def init_argparser():
     parser.add_argument('--modelid', default='')
     parser.add_argument('--region', default=None)
     parser.add_argument('--row', default=None)
-    parser.add_argument('--aspect', type=int, default=3)
+    parser.add_argument('--aspect', type=float, default=3)
     parser.add_argument('--height', type=float, default=-1)
+    parser.add_argument('--fontscale', type=float, default=2)
     parser.add_argument('--order', default=None, help="File containing order of x axis")
     parser.add_argument('--statsummary', default='', help='Add stat summary, group by this column')
     parser.add_argument('--palette', default='muted',
@@ -201,7 +202,10 @@ def plot_accuracies(args):
         cerr(f'[I - melted variables: {melted}')
         data = drop_dataframe(data, variables, args.labelcolumn, labels).melt(melted)
 
-    sns.set_palette(args.palette)
+    #sns.set_palette(args.palette)
+    custom_params = {'xtick.direction': 'out', 'ytick.direction': 'out'}
+    sns.set_theme(font_scale=args.fontscale, palette=args.palette, rc=custom_params)
+    sns.axes_style()
 
     if labels is None:
         if args.height > 0:
