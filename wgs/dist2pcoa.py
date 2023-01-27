@@ -1,5 +1,5 @@
 
-from seqpy import cerr
+from seqpy import cerr, cout
 from seqpy.cmds import arg_parser
 
 
@@ -41,6 +41,10 @@ def dist2pcoa(args):
     df = pd.concat([sample_df, pca_df], axis=1)
     write_file(args.outfile, df)
     cerr(f'[PCoA written to {args.outfile}]')
+
+    # report on variance
+    for i in range(len(pca.explained_variance_ratio_)):
+        cout(f'  PC{i + 1}: {pca.explained_variance_ratio_[i]}')
 
 
 def main(args):
