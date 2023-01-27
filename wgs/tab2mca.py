@@ -9,7 +9,7 @@ def init_argparser():
     p = argparse.ArgumentParser()
 
     p.add_argument('-o', '--outfile')
-    p.add_argument('--components', type=int, default=3,
+    p.add_argument('-n', '--n_components', type=int, default=3,
                    help='Number of principal components to be written, default is 3')
     p.add_argument('infile')
     return p
@@ -26,11 +26,12 @@ def tab2mca(args):
     df = tabutils.read_file(args.infile)
     df.geno.set_alleles(missings=['X'])
     allele_df = df.geno.get_alleles()
-    sample_df = df.geno.get_samples()
+
+    # meta columns contain SAMPLE and metadata columns within sample rows
     metacolumns_df = df.geno.get_metacolumns()
 
     mca = prince.MCA(
-        n_components=args.components,
+        n_components=args.n_components,
         n_iter=6,
         copy=True,
         check_input=True,
@@ -42,10 +43,10 @@ def tab2mca(args):
     cerr(f'[Processing {N} samples with {L} markers]')
     mca = mca.fit(allele_df)
     CA = mca.row_coordinates(allele_df)
-    CA.rename(columns={i: f'PC{i+1}' for i in range(args.components)},
+    CA.rename(columns={i: f'PC{i + 1}' for i in range(args.n_components)},
               inplace=True)
 
-    # prepare metadata to be added to output file
+    # add original metadata in input file to output file
     joined_df = pd.concat([metacolumns_df, CA], axis=1)
 
     if args.outfile:
