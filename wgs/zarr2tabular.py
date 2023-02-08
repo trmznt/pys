@@ -104,9 +104,6 @@ def zarr2tabular(args):
 
     match ext := os.path.splitext(args.outfile)[1].lower():
 
-        case '.tsv' | '.csv':
-            tabular_df.to_csv(args.outfile, sep='\t' if ext == '.tsv' else ',', index=False)
-
         case '.txt':
             with open(args.outfile, 'w') as fout:
                 fout.write('#BAR\tSAMPLE\n')
@@ -114,9 +111,9 @@ def zarr2tabular(args):
                     fout.write(''.join(row[1:]) + '\t' + row[0] + '\n')
 
         case _:
-            raise ValueError('other extension is not implemented yet')
+            tabutils.write_file(args.outfile, tabular_df)
 
-    cerr(f'[Barcode (L={L-1};N={N}) is written to {args.outfile}]')
+    cerr(f'[Genotype data (L={L-1};N={N}) is written to {args.outfile}]')
 
     if args.outtarget:
         target_posdf = posutils.posframe_from_dataset(ds)
