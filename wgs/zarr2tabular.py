@@ -35,6 +35,10 @@ def init_argparser():
                    'eg. minaltdepth = 2 indicates that variants with alternate reads >= 2 will be '
                    'marked as heterozygote, depending on the hetratio. Use hetratio = 0.999 if '
                    'hetratio is to be ignored.')
+    p.add_argument('--ploidy', type=int, default=2,
+                   help='Ploidy of samples (in VCF file), default = 2')
+    p.add_argument('--max_alt_alleles', type=int, default=8,
+                   help='Maximum number of alternate alleles (in VCF file), default = 8')
     p.add_argument('infile')
 
     return p
@@ -51,7 +55,9 @@ def zarr2tabular(args):
         posdf = posutils.read_posfile(args=args)
 
     # load dataset
-    ds = sgio.load_dataset(args.infile)
+    ds = sgio.load_dataset(args.infile, fields=['FORMAT/GT', 'FORMAT/AD'],
+                           max_alt_alleles=args.max_alt_alleles,
+                           ploidy=args.ploidy)
 
     # select SNPs
     if posdf is not None:
