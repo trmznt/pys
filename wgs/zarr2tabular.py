@@ -55,7 +55,7 @@ def zarr2tabular(args):
         posdf = posutils.read_posfile(args=args)
 
     # load dataset
-    ds = sgio.load_dataset(args.infile, fields=['FORMAT/GT', 'FORMAT/AD'],
+    ds = sgio.load_dataset(args.infile, fields=['INFO/*', 'FORMAT/GT', 'FORMAT/AD'],
                            max_alt_alleles=args.max_alt_alleles,
                            ploidy=args.ploidy)
 
