@@ -24,17 +24,20 @@ def init_argparser():
     p.add_argument('--useGT', default=False, action='store_true')
     p.add_argument('--mindepth', default=5, type=int,
                    help='Cut-off depth to be called missing variant, eg. mindepth = 5 '
-                   'indicates variants with total depth < 5 will be mark as missing.')
+                   'indicates variants with total depth < 5 will be mark as missing. '
+                   'Default = 5')
     p.add_argument('--hetratio', default=0.67, type=float,
                    help='The ratio of allele depth over total depth to call hets. '
                    'Value of 0.67 means if depth_of_major_allele/total_depth is < 0.67, '
                    'the genotype will be N. Valid values are between 0.5 to 1.0. '
-                   'Set to -1 for obtaining major allele')
+                   'Set to -1 for obtaining major allele. Default = 0.67')
+    p.add_argument('--major', default=False, action='store_true',
+                   help='Get major allele only, essentially shortcut for "--hetratio -1"')
     p.add_argument('--minaltdepth', default=2, type=int,
                    help='Threshold value for minor depth of a variant to be called heterozygote, '
                    'eg. minaltdepth = 2 indicates that variants with alternate reads >= 2 will be '
-                   'marked as heterozygote, depending on the hetratio. Use hetratio = 0.999 if '
-                   'hetratio is to be ignored.')
+                   'marked as heterozygote, depending on the hetratio. Use hetratio = 0.9999 if '
+                   'hetratio is to be ignored. Default = 2')
     p.add_argument('--ploidy', type=int, default=2,
                    help='Ploidy of samples (in VCF file), default = 2')
     p.add_argument('--max_alt_alleles', type=int, default=8,
@@ -83,7 +86,10 @@ def zarr2tabular(args):
     else:
         sample_df = None
 
-    # convert using hetratio
+    # convert using hetratio, adjust params
+
+    if args.major:
+        args.hetratio = -1
 
     #import IPython; IPython.embed()
 
