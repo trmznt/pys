@@ -59,7 +59,7 @@ def mhtplot( args ):
 
     print(region_boundaries)
 
-    fig = plt.figure( figsize=(21, no_of_figures), dpi = args.dpi )
+    fig = plt.figure( figsize=(21, no_of_figures * 5), dpi = args.dpi )
 
     for idx, c in enumerate(columns):
         cerr('I: plotting %s' % c)
