@@ -5,7 +5,7 @@ import os
 
 import pandas as pd
 
-from seqpy import cerr
+from seqpy import cerr, cexit
 from seqpy.core.bioio import posutils
 
 
@@ -48,6 +48,11 @@ def init_argparser():
 
 
 def zarr2tabular(args):
+
+    cexit('ERROR, please use seqpy builtin zarr2tabular: spcli zarr2tabular')
+
+    import dask
+    dask.config.set(scheduler='synchronous')
 
     from seqpy.core.sgk import sgio, sgutils
     from seqpy.core.bioio import tabutils
