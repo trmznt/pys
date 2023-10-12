@@ -30,12 +30,12 @@ option.list <- list(
   make_option(c("-m", "--method"),
               help = "Clustering method (Default: Neighbor joining).
                  Choices are: \"nj\", \"upgma\"",
-              default = "nj")
-               ),
+              default = "nj"),
   make_option("--cex",
+              type = "double",
               help = "Font size for leaf label (Default: 0.7)",
-              type = "float",
               default = 0.7)
+)
 parser <- OptionParser(usage = "%prog [options] distance",
                        option_list = option.list)
 args <- parse_args(parser, positional_arguments = 1)
@@ -100,10 +100,12 @@ if (is.null(args$options$output)) {
   }
   output.name <- paste(output.name, args$options$type,
                        args$options$method, sep = "_")
+  output.name <- paste(output.name, "pdf", sep = ".")
 } else {
   output.name <- args$options$output
 }
-output.file <- paste(output.name, "pdf", sep = ".")
+#output.file <- paste(output.name, "pdf", sep = ".")
+output.file <- output.name
 pdf(file = output.file, title = output.name, width = 16.5, height = 9.27)
 if (!is.null(args$options$outtree)) {
   outtree.file <- args$options$outtree
