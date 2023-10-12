@@ -1,17 +1,18 @@
 #!/usr/bin/env spcli
 
-from seqpy import cout, cerr
+from seqpy import cout, cerr, cexit
 from seqpy.cmds import arg_parser
 
 from collections import defaultdict
 
 try:
     from matplotlib import pyplot as plt, colors
-except:
+except ImportError:
     cexit('ERR: require properly installed matplotlib')
 
+
 def init_argparser():
-    p = arg_parser("Create annotation for individual color")
+    p = arg_parser("Create color annotation for individual based on certain value")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument('--keep', default=None)
     g.add_argument('--replace', default=None)
@@ -23,14 +24,15 @@ def init_argparser():
     p.add_argument('--reverse', default=False, action='store_true')
     p.add_argument('-o', '--outfile', default='outcolor.txt')
 
-    p.add_argument('infile')
+    p.add_argument('infile',
+                   help='tab-delimited file')
 
     return p
 
 
-def main( args ):
+def main(args):
 
-    anno2color( args )
+    anno2color(args)
 
 
 def anno2color(args):
@@ -46,7 +48,7 @@ def anno2color(args):
                 indv_vals[tokens[0]] = float(tokens[args.column-1])
 
     elif args.value:
-        indv_vals = defaultdict( lambda: args.value )
+        indv_vals = defaultdict(lambda: args.value)
 
     keep_d = {}
     replace_d = {}
@@ -72,7 +74,7 @@ def anno2color(args):
             # keeping individual values
             for line in infile:
                 tokens = line.strip().split('\t')
-                indv.append( tokens )
+                indv.append(tokens)
                 indv_code = tokens[0]
                 if indv_code not in keep_d:
                     modify[indv_code] = indv_vals[indv_code]
@@ -82,14 +84,13 @@ def anno2color(args):
             # modify individual values
             for line in infile:
                 tokens = line.strip().split('\t')
-                indv.append( tokens )
+                indv.append(tokens)
                 indv_code = tokens[0]
                 if indv_code in replace_d:
                     modify[indv_code] = indv_vals[indv_code]
 
         else:
             cexit('ERR: unable to proceed!')
-
 
     if args.reverse:
         values = modify.values()
@@ -114,10 +115,11 @@ def anno2color(args):
             if tokens[0] in modify:
                 value = modify[tokens[0]]
                 if type(value) == float:
-                    value = colors.to_hex( cmap( value ) )
+                    value = colors.to_hex(cmap(value))
             else:
                 value = tokens[1]
-            outfile.write('%s\t%s\n' % ( tokens[0], value ))
-
+            outfile.write('%s\t%s\n' % (tokens[0], value))
 
     cerr('Writing to %s' % args.outfile)
+
+# EOF
