@@ -17,7 +17,9 @@ def init_argparser():
     p.add_argument('--hue', default=None,
                    help="Column name to used to differentiate data points")
     p.add_argument('--dpi', type=int, default=600)
-    p.add_argument('--jitter', type=float, default=0.005)
+    # p.add_argument('--jitter', type=float, default=0.005)
+    p.add_argument('--equal_aspect', default=False, action='store_true',
+                   help='set both axis to equal aspect (scale)')
     p.add_argument('--fontscale', type=float, default=1,
                    help="font scale, default=1")
     p.add_argument('-s', '--size', type=int, default=10,
@@ -71,8 +73,8 @@ def scatter(args):
 
     for x_ax, y_ax in data_axes:
 
-        x_jitter = max(df[x_ax]) - min(df[x_ax]) * args.jitter
-        y_jitter = max(df[y_ax]) - min(df[y_ax]) * args.jitter
+        # x_jitter = max(df[x_ax]) - min(df[x_ax]) * args.jitter
+        # y_jitter = max(df[y_ax]) - min(df[y_ax]) * args.jitter
 
         ax = fig.add_subplot(N, 1, fig_idx)
         fig_idx += 1
@@ -82,12 +84,15 @@ def scatter(args):
                         palette=colors,
                         markers=markers,
                         s=args.size,
-                        x_jitter=x_jitter,
-                        y_jitter=y_jitter,
+                        # x_jitter=x_jitter,
+                        # y_jitter=y_jitter,
                         alpha=0.9,
                         )
         if args.legend_out:
             plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
+
+        if args.equal_aspect:
+            ax.set_aspect('equal', adjustable='box')
 
     fig.tight_layout()
     fig.savefig(args.outplot)
