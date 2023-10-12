@@ -7,7 +7,8 @@ from seqpy.cmds import arg_parser
 def init_argparser():
     p = arg_parser()
     p.add_argument('-o', '--outfile')
-    p.add_argument('--codefile', required=True)
+    p.add_argument('--codefile', required=True,
+                   help="a tab-delimited file with MHCODE column for the mhap codes")
     p.add_argument('-m', '--metafile', default='',
                    help='Metafile containing columns to be added to output file, use eg. '
                    'metafile.tsv:SAMPLE,COUNTRY,REGION to add COUNTRY and REGION to output '
