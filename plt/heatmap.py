@@ -7,9 +7,11 @@ from seqpy.cmds import arg_parser
 def init_argparser():
     p = arg_parser('creating a heatmap from a Dataframe file')
     p.add_argument('-o', '--outplot')
-    p.add_argument('-c', '--colorfile',
-                   help=("a TSV/CSV file containg the group, COLOR and MARKER columns "
-                         "for defining the color and marker of each data point"))
+    p.add_argument('--colormap', default='gist_heat_r',
+                   help='color map to use [gist_heat_r]')
+    p.add_argument('--logscale', default=False, action='store_true',
+                   help='use logaritmic scale')
+
     p.add_argument('--hue', default=None,
                    help="Column name to used to differentiate data points")
     p.add_argument('--dpi', type=int, default=600)
@@ -32,6 +34,7 @@ def heatmap(args):
 
     from seqpy.core.bioio.tabutils import read_file
     from matplotlib import pyplot as plt
+    from matplotlib.colors import LogNorm, Normalize
     from itertools import combinations
 
     import seaborn as sns
@@ -40,11 +43,15 @@ def heatmap(args):
 
     df.set_index('SAMPLE', inplace=True)
 
-    ax = sns.heatmap(df, cmap='gist_heat_r', xticklabels=1, square=True,
-                     cbar_kws={"shrink": .8}, yticklabels=1)
+    ax = sns.heatmap(df, cmap=args.colormap, xticklabels=1, square=True,
+                     cbar_kws={"shrink": .8}, yticklabels=1,
+                     norm=LogNorm() if args.logscale else None)
+
     [t.set_fontsize(5) for t in ax.get_yticklabels()]
     [t.set_fontsize(5) for t in ax.get_xticklabels()]
-    ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=60, ha="right")
+    ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=60, ha="right",
+                  rotation_mode='anchor')
+
     plt.tight_layout()
     plt.savefig(args.outplot)
 
