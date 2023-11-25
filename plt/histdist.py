@@ -8,7 +8,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 def init_argparser():
-    p = arg_parser("Create PCoA plot based on distance matrix file")
+    p = arg_parser("Create histogram of distances from distance matrix")
     p.add_argument('--max', type=float, default=0.0)
     p.add_argument('--dpi', type=int, default=600)
     p.add_argument('-o', '--outplot', default="outplot.pcoa.png")
