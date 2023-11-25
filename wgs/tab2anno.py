@@ -74,7 +74,7 @@ def tab2anno(args):
     else:
         # generate spec_df automatically
         column = columns[1]
-        spec_df = tabutils.generate_spec_df(joined_df[column].unique(), column)
+        spec_df = tabutils.generate_spec_df(sorted(joined_df[column].unique()), column)
 
     joined_df = joined_df.meta.join(spec_df, column)
 
