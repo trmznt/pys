@@ -24,6 +24,8 @@ def init_argparser(p=None):
                    help='reference sequence(s) in FASTA format')
     p.add_argument('-o', '--outfile', default='outprimers.tsv',
                    help='output file name')
+    p.add_argument('--outfragment', default='',
+                   help='output as fragments in FASTA')
     p.add_argument('infile',
                    help='FASTG file containing primer sequences')
 
@@ -141,7 +143,7 @@ def amplify_all_primers(anneal_list, min_length=100, max_length=1000):
 def do_simulate(primer_seqs, template_seqs, args):
 
     annealed_primers = anneal_all_primers(primer_seqs, template_seqs, args.maxmismatchprop)
-    return amplify_all_primers(annealed_primers)
+    return amplify_all_primers(annealed_primers, args.minlength, args.maxlength)
 
 
 def table_amplicons(amplicons):
@@ -165,6 +167,25 @@ def table_amplicons(amplicons):
         ]
 
     return df
+
+
+def fragment_amplicons(amplicons, template_seqs):
+
+    from seqpy.core import bioio
+
+    mseqs = bioio.multisequence()
+
+    for idx, amp in enumerate(amplicons):
+        seq = template_seqs.get_by_label(amp.chrom)
+        fragment_seq = seq.seq[amp.begin:amp.end]
+        fragment_label = (f'{amp.chrom}:{amp.begin}-{amp.end}:'
+                          f'{amp.anneal_upstream.primer.label}:'
+                          f'{amp.anneal_downstream.primer.label}:'
+                          f'{amp.length}')
+
+        mseqs.addseq(fragment_label, fragment_seq)
+
+    return mseqs
 
 
 def primersim(args):
@@ -196,7 +217,12 @@ def primersim(args):
     df = table_amplicons(amplicons)
 
     df.to_csv(args.outfile, sep='\t', index=False)
-    cerr(f'[Amplicons written to {args.outfile}]')
+    cerr(f'[Amplicon report written to {args.outfile}]')
+
+    if args.outfragment:
+        mseqs = fragment_amplicons(amplicons, template_seqs)
+        bioio.save(mseqs, args.outfragment)
+        cerr(f'[Amplicon fragments written to {args.outfragment}]')
 
 
 def main(args):
