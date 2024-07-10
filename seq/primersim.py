@@ -2,7 +2,7 @@
 
 import argparse
 import os
-from seqpy import cerr
+from seqpy import cerr, cexit
 from numba import njit
 from dataclasses import dataclass
 
@@ -20,10 +20,13 @@ def init_argparser(p=None):
                    help='maximum proportion of mismatch bases for annealing [0.2]')
     p.add_argument('--reversecomplement', default=False, action='store_true',
                    help='check the reverse-complemented of primers as well')
+    p.add_argument('--proof-read', default=False, action='store_true',
+                   help='use polymerase with proofread capability')
     p.add_argument('--template',
                    help='reference sequence(s) in FASTA format')
     p.add_argument('-o', '--outfile', default='outprimers.tsv',
                    help='output file name')
+    p.add_argument('--strip-primers', default=False, action='store_true')
     p.add_argument('--outfragment', default='',
                    help='output as fragments in FASTA')
     p.add_argument('infile',
@@ -56,12 +59,13 @@ def anneal_primer(template_seq, primer_seq, diff_last_5=2, max_mismatch=0.3):
 @dataclass
 class AnnealPosition(object):
     chrom: str
-    begin: int
-    end: int
-    strand: str
+    begin: int      # upstream position of annealed sequence in + direction
+    end: int        # downstream position of annealed sequence in + direction
+    strand: str     # + or - direction of primer
     mismatch: float
     score: float
-    primer: object
+    primer: object  # sequence of primer in 5' -> 3' direction
+    seq: str        # template sequence annealed in chromosomal direction (+)
 
 
 @dataclass
@@ -72,6 +76,7 @@ class Amplicon(object):
     length: int
     anneal_upstream: object
     anneal_downstream: object
+    avg_mismatch: float
 
 
 def anneal_all_primers(primer_seqs, template_seqs, maxmismatchprop=0.1):
@@ -86,6 +91,7 @@ def anneal_all_primers(primer_seqs, template_seqs, maxmismatchprop=0.1):
             (primer_seq.seq, '+'),
             (funcs.reverse_complemented(primer_seq), '-')
         ]:
+            counter = 0
             for template_seq in template_seqs:
                 #cerr(f'[ - Priming against {template_seq.label}]')
                 anneal_results = anneal_primer(template_seq.seq, primer,
@@ -101,13 +107,30 @@ def anneal_all_primers(primer_seqs, template_seqs, maxmismatchprop=0.1):
                                 mismatch=mismatch_prop,
                                 score=score,
                                 primer=primer_seq,
+                                seq=template_seq.seq[begin:end],
                             )
                         )
+                    counter += len(anneal_results)
+            cerr(f'[{primer_seq.label} in {orientation} orientation '
+                 f'annealed at {counter} position(s)]')
 
     return all_primers
 
 
-def amplify_all_primers(anneal_list, min_length=100, max_length=1000):
+def calc_diff_last_5(seq_1, seq_2):
+    if len(seq_1) != len(seq_2):
+        cexit('[lengths of seq_1 and _seq_2 differ!]')
+    diff_last_5 = 0
+    for i in range(len(seq_1)-5, len(seq_1)):
+        if seq_1[i] != seq_2[i]:
+            diff_last_5 += 1
+    return diff_last_5
+
+
+def amplify_all_primers(anneal_list, min_length=100, max_length=1000,
+                        diff_last_5=3, proof_read=False):
+
+    from seqpy.core.funcs import funcs
 
     pos_anneals = [p for p in anneal_list if p.strand == '+']
     neg_anneals = [p for p in anneal_list if p.strand == '-']
@@ -126,6 +149,24 @@ def amplify_all_primers(anneal_list, min_length=100, max_length=1000):
             extension = q_a.end - p_a.begin
             #cerr(f'[ {p_a[0]} - {extension}]')
             if min_length <= extension <= max_length:
+
+                # check for + strand
+                if calc_diff_last_5(p_a.primer.seq, p_a.seq) > diff_last_5:
+                    continue
+
+                if not proof_read:
+                    if p_a.primer.seq[-1] != p_a.seq[-1]:
+                        continue
+
+                # check for - strand (revcomp seq first
+                annealed_seq = funcs.reverse_complemented(q_a.seq)
+                if calc_diff_last_5(q_a.primer.seq, annealed_seq) > diff_last_5:
+                    continue
+
+                if not proof_read:
+                    if q_a.primer.seq[-1] != annealed_seq[-1]:
+                        continue
+
                 amplicons.append(
                     Amplicon(
                         chrom=p_a.chrom,
@@ -133,7 +174,8 @@ def amplify_all_primers(anneal_list, min_length=100, max_length=1000):
                         end=q_a.end,
                         length=extension,
                         anneal_upstream=p_a,
-                        anneal_downstream=q_a
+                        anneal_downstream=q_a,
+                        avg_mismatch=(p_a.mismatch + q_a.mismatch)/2
                     )
                 )
 
@@ -143,33 +185,88 @@ def amplify_all_primers(anneal_list, min_length=100, max_length=1000):
 def do_simulate(primer_seqs, template_seqs, args):
 
     annealed_primers = anneal_all_primers(primer_seqs, template_seqs, args.maxmismatchprop)
-    return amplify_all_primers(annealed_primers, args.minlength, args.maxlength)
+    return amplify_all_primers(annealed_primers, args.minlength, args.maxlength,
+                               proof_read=args.proof_read)
+
+def recase_sequence(target, primerseq):
+    ''' change case to lowercase at positions with differing base'''
+    assert len(target) == len(primerseq)
+    #target = bytearray(target, 'ASCII')
+    #primerseq = bytearray(primerseq, 'ASCII')
+    target = bytearray(target)
+    for i in range(len(primerseq)):
+        if primerseq[i] != target[i]:
+            target[i] = target[i] + 32
+    return target
+    #return target.decode('ASCII')
 
 
 def table_amplicons(amplicons):
 
     import pandas as pd
+    from seqpy.core.funcs import funcs
 
     df = pd.DataFrame(
         dict(
-            chrom=[], length=[], begin=[], end=[],
-            primer_upstream=[], begin_upstream=[], end_upstream=[], seq_upstream=[],
-            primer_downstream=[], begin_donwstream=[], end_downstream=[], seq_downstream=[]
+            chrom=[],
+            length=[],
+            avg_mismatch=[],
+            begin=[],
+            end=[],
+            primer_upstream=[],
+            begin_upstream=[],
+            end_upstream=[],
+            mismatch_upstream=[],
+            primerseq_upstream=[],
+            seq_upstream=[],
+            primer_downstream=[],
+            begin_downstream=[],
+            end_downstream=[],
+            mismatch_downstream=[],
+            primerseq_downstream=[],
+            seq_downstream=[],
+            revcomp_downstream=[],
         )
     )
     for idx, amp in enumerate(amplicons):
         anneal_up = amp.anneal_upstream
         anneal_dw = amp.anneal_downstream
+
+        upstream_primerseq = anneal_up.primer.seq #.decode('ASCII')
+        upstream_template = anneal_up.seq #.decode('ASCII')
+        upstream_template = recase_sequence(upstream_template, upstream_primerseq)
+
+        downstream_primerseq = anneal_dw.primer.seq #.decode('UTF-8')
+        downstream_template = anneal_dw.seq #.decode('UTF-8')
+        downstream_template = recase_sequence(downstream_template,
+                                              funcs.reverse_complemented(downstream_primerseq))
+
         df.loc[idx] = [
-            amp.chrom, amp.length, amp.begin, amp.end,
-            anneal_up.primer.label, anneal_up.begin, anneal_up.end, anneal_up.primer.seq.decode('UTF-8'),
-            anneal_dw.primer.label, anneal_dw.begin, anneal_dw.end, anneal_dw.primer.seq.decode('UTF-8'),
+            amp.chrom,
+            amp.length,
+            amp.avg_mismatch,
+            amp.begin + 1,
+            amp.end,
+            anneal_up.primer.label,
+            anneal_up.begin + 1,
+            anneal_up.end,
+            anneal_up.mismatch,
+            upstream_primerseq.decode('ASCII'),
+            upstream_template.decode('ASCII'),
+            anneal_dw.primer.label,
+            anneal_dw.begin + 1,
+            anneal_dw.end,
+            anneal_dw.mismatch,
+            downstream_primerseq.decode('ASCII'),
+            downstream_template.decode('ASCII'),
+            funcs.reverse_complemented(downstream_template).decode('ASCII'),
         ]
 
+    df.sort_values(by='avg_mismatch', inplace=True)
     return df
 
 
-def fragment_amplicons(amplicons, template_seqs):
+def fragment_amplicons(amplicons, template_seqs, strip_primers=False):
 
     from seqpy.core import bioio
 
@@ -177,11 +274,22 @@ def fragment_amplicons(amplicons, template_seqs):
 
     for idx, amp in enumerate(amplicons):
         seq = template_seqs.get_by_label(amp.chrom)
-        fragment_seq = seq.seq[amp.begin:amp.end]
-        fragment_label = (f'{amp.chrom}:{amp.begin}-{amp.end}:'
+        if strip_primers:
+            cerr(f'upstream_end = {amp.anneal_upstream.end}')
+            begin = amp.anneal_upstream.end
+            end = amp.anneal_downstream.begin
+        else:
+            begin = amp.anneal_upstream.begin
+            end = amp.anneal_downstream.end
+        fragment_seq = seq.seq[begin:end]
+        fragment_label = (f'{amp.chrom}:{begin + 1}-{end}:'
                           f'{amp.anneal_upstream.primer.label}:'
                           f'{amp.anneal_downstream.primer.label}:'
-                          f'{amp.length}')
+                          f'{end-begin}')
+        if strip_primers:
+            fragment_label += ':primers-stripped'
+        else:
+            fragment_label += ':with-primers'
 
         mseqs.addseq(fragment_label, fragment_seq)
 
@@ -194,10 +302,10 @@ def primersim(args):
     from seqpy.core.funcs import funcs
 
     # read primer sequences
-    primer_seqs = bioio.load(args.infile)
+    primer_seqs = bioio.load(args.infile).upper()
 
     # read template sequences
-    template_seqs = bioio.load(args.template)
+    template_seqs = bioio.load(args.template).upper()
 
     # fix template labels
     for template_seq in template_seqs:
@@ -220,7 +328,8 @@ def primersim(args):
     cerr(f'[Amplicon report written to {args.outfile}]')
 
     if args.outfragment:
-        mseqs = fragment_amplicons(amplicons, template_seqs)
+        mseqs = fragment_amplicons(amplicons, template_seqs,
+                                   strip_primers=args.strip_primers)
         bioio.save(mseqs, args.outfragment)
         cerr(f'[Amplicon fragments written to {args.outfragment}]')
 
