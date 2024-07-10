@@ -14,6 +14,14 @@ def init_argparser():
     p.add_argument('--min-alt-ratio', default=-1, type=float, required=True,
                    help="minimum ratio of either alleles reads to be called hets, "
                    "MalariaGEN value is 0.10 [-1]")
+    p.add_argument('--set-het-to-ref', default=False, action='store_true',
+                   help='set GT to reference alleles for all het alleles')
+    p.add_argument('--set-het-to-alt', default=False, action='store_true',
+                   help='set GT to alternate alleles for all het alleles')
+    p.add_argument('--set-missing-to-ref', default=False, action='store_true',
+                   help='set GT to reference alleles for all missing alleles')
+    p.add_argument('--set-missing-to-alt', default=False, action='store_true',
+                   help='set GT to alternate alleles for all missing alleles')
     p.add_argument('-o', '--outfile', default='-',
                    help="file output [stdout]")
     p.add_argument('--outlog', default=None,
@@ -28,6 +36,9 @@ def vcf2sethets(args):
 
     # set variant to hets based on minimum number of minor reads and minimum ratio of
     # minor reads
+    # usually depth reassignment is needed after running this script to correct
+    # for AC and AF info fields
+    # note that this script works for multi-allelic variant as well
 
     import sys
     import numpy as np
@@ -60,6 +71,7 @@ def vcf2sethets(args):
         else:
             # we have multiple alleles, need only to take the all minor depths and
             # check if 1st & 2nd minor depths is the same
+
             minor_part = np.partition(AD, -2, axis=1)
             minor_args = np.argsort(-AD, axis=1)
 
@@ -77,13 +89,13 @@ def vcf2sethets(args):
             if any(equal_minor_depths):
 
                 # in each sample with equivalent minor depths, reassigned minor allele with
-                # minor_args[1] which is guaratee to be smaller allele index than minor_args[2]
+                # minor_args[1] which is guarantee to be smaller allele index than minor_args[2]
                 # when the depths of those minor alleles are the same (by np.argsort(-AD))
                 minor_alleles[equal_minor_depths] = minor_args[equal_minor_depths, 1]
 
                 # get two of the most common allele index
                 allele_indexes = (AD < min_alt_depth).sum(axis=0).argsort()
-                print(f'Allele indexes: {allele_indexes}')
+                #cerr(f'Allele indexes: {allele_indexes}')
 
                 # sanity check if reference is major (allele_indexes[0]) or minor
                 # (allele_indexes[1])
@@ -113,8 +125,14 @@ def vcf2sethets(args):
             allele = major_alleles[idx]
             v.genotypes[idx] = [allele, allele, False]
 
-        # for alltthat are not non-hets, eg. the hets, set their alleles
+        # for all that are not non-hets, eg. the hets, set their alleles
         for idx in (~non_hets).nonzero()[0]:
+            if args.set_het_to_ref:
+                v.genotypes[idx] = [0, 0, False]
+                continue
+            if args.set_het_to_alt:
+                v.genotypes[idx] = [1, 1, False]
+                continue
             # sort alleles
             if (maj_allele := major_alleles[idx]) > (min_allele := minor_alleles[idx]):
                 alleles = [min_allele, maj_allele, False]
@@ -123,6 +141,12 @@ def vcf2sethets(args):
             v.genotypes[idx] = alleles
 
         for idx in (v.gt_depths == 0).nonzero()[0]:
+            if args.set_missing_to_ref:
+                v.genotypes[idx] = [0, 0, False]
+                continue
+            if args.set_missing_to_alt:
+                v.genotypes[idx] = [1, 1, False]
+                continue
             v.genotypes[idx] = [-1, -1, False]
 
         # reset genotypes
@@ -138,7 +162,7 @@ def vcf2sethets(args):
     if args.outlog:
         with open(args.outlog, 'w') as outlog:
             outlog.write('\n'.join(logs))
-        cerr(f'Log file written ')
+        cerr(f'Log file written to {args.outlog}')
 
 
 def main(args):
